@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Corturi de Tabără — Alege-ți cortul</title>
+  <meta name="description" content="Alege-ți cortul și colegii de tabără." />
+  <meta name="theme-color" content="#2f6b4f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛺</text></svg>" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-badge">⛺</div>
+      <div>
+        <div class="brand-title" id="event-name">Tabără</div>
+        <div class="brand-sub">Repartizare pe corturi</div>
+      </div>
+      <div class="spacer"></div>
+      <a class="btn btn-ghost btn-sm" href="admin.html" title="Organizator">🔑</a>
+    </header>
+
+    <div class="steps" id="steps">
+      <div class="dot active"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+
+    <main id="view"><!-- rendered by app.js --></main>
+  </div>
+
+  <script src="assets/store.js"></script>
+  <script src="assets/ui.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
