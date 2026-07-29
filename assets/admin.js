@@ -231,7 +231,7 @@
         '<div class="divider"></div>' +
         '<button class="btn btn-danger btn-block" id="reset">Șterge toate corturile</button>' +
         '<button class="btn btn-ghost btn-block mt" id="logout">Ieși din cont</button>' +
-        '<button class="btn btn-ghost btn-block mt" id="demo" style="color:var(--text-dim)">↺ Resetează datele demo</button>';
+        (Store.backend === "demo" ? '<button class="btn btn-ghost btn-block mt" id="demo" style="color:var(--text-dim)">↺ Resetează datele demo</button>' : "");
 
       document.getElementById("name-save").addEventListener("click", function () { Store.setEventName(document.getElementById("name").value.trim() || "Tabără").then(function () { UI.toast("Salvat.", "ok"); }); });
       document.getElementById("toggle").addEventListener("click", function () { Store.setBookingOpen(!s.bookingOpen).then(function () { renderSettings(p); }); });
@@ -241,8 +241,9 @@
         Store.setPin(v).then(function () { UI.toast("PIN schimbat.", "ok"); document.getElementById("pin").value = ""; });
       });
       document.getElementById("reset").addEventListener("click", function () { if (confirm("Sigur ștergi TOATE corturile? Participanții rămân.")) Store.resetAssignments().then(function () { UI.toast("Corturi șterse.", "info"); }); });
-      document.getElementById("logout").addEventListener("click", function () { setAuthed(false); renderLogin(); });
-      document.getElementById("demo").addEventListener("click", function () { if (confirm("Resetezi complet datele demo?")) Store._reseed().then(function () { UI.toast("Date demo resetate.", "info"); renderApp(); }); });
+      document.getElementById("logout").addEventListener("click", function () { setAuthed(false); try { sessionStorage.removeItem("corturi.pin"); } catch (e) {} renderLogin(); });
+      var demoBtn = document.getElementById("demo");
+      if (demoBtn) demoBtn.addEventListener("click", function () { if (confirm("Resetezi complet datele demo?")) Store._reseed().then(function () { UI.toast("Date demo resetate.", "info"); renderApp(); }); });
     });
   }
 

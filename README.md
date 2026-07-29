@@ -7,8 +7,9 @@ cu validare automată (fără dublă-ocupare, respectă capacitatea și genul). 
 
 Design **dark, modern**, cu pagină de start și **video din Munții Făgăraș** în hero.
 
-> Starea actuală: **frontend complet, funcțional**, cu date demo salvate local în browser
-> (`localStorage`). Backend-ul real (Supabase) se conectează într-un pas separat (vezi jos).
+> Starea actuală: **conectat la Supabase** (live, comun pentru toți). Dacă biblioteca
+> Supabase nu se încarcă (offline/preview), site-ul cade automat pe un mod **demo** local
+> (`localStorage`) cu date de test — deci merge și fără rețea.
 
 ## Fluxul
 
@@ -65,10 +66,29 @@ Reset date demo: **Setări → „Resetează datele demo"** (sau golește localS
 - **GitHub Pages**: Settings → Pages → Branch → `/` (root).
 - Sau **Netlify / Vercel**: drag & drop folderul. Nimic de compilat.
 
-## Pasul următor: backend real (Supabase)
+## Backend (Supabase) — deja conectat
 
-Ca toți să vadă **aceleași** corturi live (nu doar local în browser), datele merg într-o bază
-comună. Plan: tabele `camp_tents` (cu `created_by`), `camp_participants`, `camp_requests`,
-`camp_settings`; funcții Postgres `SECURITY DEFINER` care validează atomic (create/join cu
-`FOR UPDATE` + `UNIQUE` pe participant); un `store.js` nou care le apelează prin
-`@supabase/supabase-js`. Proiectul Supabase există deja și e pregătit.
+Site-ul folosește un proiect Supabase dedicat (`corturi-fagaras`). Datele sunt comune și live
+pentru toți participanții. Detalii:
+
+- Conexiunea e în `assets/config.js` (URL + cheie *publishable* — publică, safe de comis).
+- Toate scrierile trec prin funcții Postgres `SECURITY DEFINER` care validează atomic
+  (create/join cu `for update` pe cort + `unique` pe participant → o persoană într-un singur
+  cort, respectă capacitatea și genul). Nimeni nu scrie direct în tabele din browser.
+- PIN-ul de admin stă **doar** în baza de date (hash bcrypt), niciodată în cod.
+- Schema completă: `supabase/schema.sql`.
+
+## Lansare — ce ai de făcut
+
+1. **Publică site-ul** (static, gratuit):
+   - GitHub Pages: repo → Settings → Pages → Branch `main` (sau branch-ul tău) → `/root` → Save.
+   - Sau Netlify/Vercel: drag & drop folderul.
+2. **Intră în admin** (`/admin.html`) cu PIN-ul implicit **1234**:
+   - **Setări → Schimbă PIN** (pune ceva doar al tău — recomand 6+ caractere).
+   - **Participanți → Adaugă** lista completă („Nume, gen" pe fiecare linie).
+   - Lasă „Înscrieri" pe *deschise* când vrei să înceapă.
+3. (Opțional) **Înlocuiește video-ul** din `assets/media/hero.mp4` + `hero-poster.jpg`.
+4. **Trimite link-ul** participanților. Gata — își fac corturile singuri.
+
+> Notă securitate: schema e sigură pentru un tool de tabără. Singura „poartă" e PIN-ul de
+> admin, deci alege un PIN decent (nu-l lăsa 1234).
