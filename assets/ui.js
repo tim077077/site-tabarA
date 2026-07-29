@@ -61,6 +61,22 @@
       var o = document.querySelector(".overlay");
       if (o) o.remove();
       document.body.style.overflow = "";
+    },
+    confetti: function () {
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      var colors = AV_COLORS.concat(["#2f9e6a", "#f0803c"]);
+      for (var i = 0; i < 70; i++) {
+        var p = document.createElement("span");
+        p.className = "confetti-piece";
+        p.style.left = Math.random() * 100 + "vw";
+        p.style.background = colors[i % colors.length];
+        p.style.animationDuration = (1.6 + Math.random() * 1.4) + "s";
+        p.style.animationDelay = (Math.random() * 0.3) + "s";
+        p.style.transform = "rotate(" + (Math.random() * 360) + "deg)";
+        if (i % 3 === 0) p.style.borderRadius = "50%";
+        document.body.appendChild(p);
+        (function (el) { setTimeout(function () { el.remove(); }, 3400); })(p);
+      }
     }
   };
 

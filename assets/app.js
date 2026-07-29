@@ -284,6 +284,7 @@
       fl.appendChild(UI.el('<div class="person" style="cursor:default">' + UI.avatar(o.name) +
         '<span class="who"><span class="name">' + UI.esc(o.name) + (o.id === state.me.id ? ' <span class="badge badge-soft">tu</span>' : "") + '</span></span></div>'));
     });
+    UI.confetti();
     document.getElementById("btn-home").addEventListener("click", function () { state = { step: 1, me: null, tent: null, selected: new Set(), bookingOpen: state.bookingOpen }; go(1); });
     document.getElementById("btn-change").addEventListener("click", function () {
       Store.leave(state.me.id).then(function () { go(2); });

@@ -138,17 +138,20 @@ a { color: var(--brand-ink); }
 
 /* ---------- Hero / step header ---------- */
 .hero {
-  background: linear-gradient(155deg, var(--pine-600), var(--pine-700));
+  background: linear-gradient(155deg, var(--pine-500), var(--pine-700));
   color: #fff; border-radius: var(--r-xl);
-  padding: 22px 20px; box-shadow: var(--shadow-md);
+  padding: 22px 20px 84px; box-shadow: var(--shadow-md);
   position: relative; overflow: hidden; margin-bottom: 18px;
 }
+/* hand-drawn camp scene along the bottom of the hero */
 .hero::after {
-  content: "⛺"; position: absolute; right: -8px; bottom: -14px;
-  font-size: 96px; opacity: .16; transform: rotate(-8deg);
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 92px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 92' preserveAspectRatio='none'%3E%3Cg fill='none'%3E%3Ccircle cx='340' cy='30' r='16' fill='%23f79a5e' opacity='.85'/%3E%3Cpath d='M0 74 L46 40 L92 74 Z' fill='%23ffffff' opacity='.14'/%3E%3Cpath d='M60 74 L120 30 L180 74 Z' fill='%23ffffff' opacity='.2'/%3E%3Cpath d='M150 74 L205 44 L260 74 Z' fill='%23ffffff' opacity='.14'/%3E%3Cg fill='%23ffffff' opacity='.9'%3E%3Cpath d='M262 76 L280 42 L298 76 Z'/%3E%3Cpath d='M258 66 L280 30 L302 66 Z'/%3E%3Crect x='277' y='72' width='6' height='8'/%3E%3C/g%3E%3Cg fill='%23ffffff' opacity='.72'%3E%3Cpath d='M300 78 L314 50 L328 78 Z'/%3E%3Cpath d='M297 70 L314 42 L331 70 Z'/%3E%3Crect x='311' y='75' width='5' height='7'/%3E%3C/g%3E%3Cpath d='M110 80 l24 -34 l24 34 Z' fill='%23f0803c'/%3E%3Cpath d='M134 46 l24 34 l-8 0 l-16 -22 Z' fill='%23e8692a'/%3E%3Cpath d='M128 80 l6 -9 l6 9 Z' fill='%23163a2b' opacity='.6'/%3E%3Crect x='0' y='79' width='400' height='13' fill='%23163a2b' opacity='.5'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 100% 100%; background-repeat: no-repeat; pointer-events: none;
 }
+.hero > * { position: relative; z-index: 1; }
 .hero h1 { font-size: 1.5rem; }
-.hero p { color: rgba(255,255,255,.86); margin-top: 6px; max-width: 34ch; }
+.hero p { color: rgba(255,255,255,.9); margin-top: 6px; max-width: 34ch; }
 .hero .eyebrow {
   display: inline-block; font-size: .74rem; font-weight: 800; letter-spacing: .08em;
   text-transform: uppercase; color: var(--sun-400);
@@ -414,3 +417,26 @@ a { color: var(--brand-ink); }
 }
 .fade-in { animation: fadein .3s ease; }
 @keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* staggered list/grid entrances */
+.grid > .tent, .person-list > .person { animation: fadein .34s both; }
+.grid > .tent:nth-child(1), .person-list > .person:nth-child(1) { animation-delay: .02s; }
+.grid > .tent:nth-child(2), .person-list > .person:nth-child(2) { animation-delay: .06s; }
+.grid > .tent:nth-child(3), .person-list > .person:nth-child(3) { animation-delay: .10s; }
+.grid > .tent:nth-child(4), .person-list > .person:nth-child(4) { animation-delay: .14s; }
+.grid > .tent:nth-child(5), .person-list > .person:nth-child(5) { animation-delay: .18s; }
+.grid > .tent:nth-child(6), .person-list > .person:nth-child(6) { animation-delay: .22s; }
+.grid > .tent:nth-child(n+7), .person-list > .person:nth-child(n+7) { animation-delay: .26s; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; }
+}
+
+/* confetti */
+.confetti-piece {
+  position: fixed; top: -14px; width: 10px; height: 14px; z-index: 80; pointer-events: none;
+  border-radius: 2px; will-change: transform, opacity;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  to { transform: translateY(105vh) rotate(720deg); opacity: .9; }
+}
