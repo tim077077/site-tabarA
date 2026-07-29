@@ -3,32 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Corturi de Tabără — Alege-ți cortul</title>
-  <meta name="description" content="Alege-ți cortul și colegii de tabără." />
-  <meta name="theme-color" content="#2f6b4f" />
+  <title>Corturi · Tabăra Făgăraș</title>
+  <meta name="description" content="Creează un cort sau intră în cortul prietenilor — Tabăra din Munții Făgăraș." />
+  <meta name="theme-color" content="#0a0c11" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛺</text></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔️</text></svg>" />
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
-  <div class="app">
+  <div class="aurora"></div>
+
+  <!-- Landing / start page -->
+  <section class="landing" id="landing">
+    <video class="landing-video" autoplay muted loop playsinline preload="auto" poster="assets/media/hero-poster.jpg">
+      <source src="assets/media/hero.mp4" type="video/mp4" />
+    </video>
+    <div class="landing-overlay"></div>
+    <div class="landing-content">
+      <span class="eyebrow">🏔️ Tabăra · Munții Făgăraș</span>
+      <h1>Cortul tău,<br /><span class="accent">gașca ta.</span></h1>
+      <p>Creează un cort sau intră în cortul prietenilor. Rapid, fără bătăi de cap.</p>
+      <button class="btn btn-primary btn-lg btn-block" id="enter">Începe <span>→</span></button>
+      <div class="landing-foot"><span class="pulse-dot"></span> se completează live</div>
+    </div>
+  </section>
+
+  <!-- App -->
+  <div class="app hidden" id="app">
     <header class="topbar">
-      <div class="brand-badge">⛺</div>
+      <div class="brand-badge">🏔️</div>
       <div>
-        <div class="brand-title" id="event-name">Tabără</div>
-        <div class="brand-sub">Repartizare pe corturi</div>
+        <div class="brand-title" id="event-name">Tabăra Făgăraș</div>
+        <div class="brand-sub">Corturi</div>
       </div>
       <div class="spacer"></div>
-      <a class="btn btn-ghost btn-sm" href="admin.html" title="Organizator">🔑</a>
+      <a class="btn btn-glass btn-sm" href="admin.html" title="Organizator">🔑</a>
     </header>
-
-    <div class="steps" id="steps">
-      <div class="dot active"></div><div class="dot"></div><div class="dot"></div>
-    </div>
-
-    <main id="view"><!-- rendered by app.js --></main>
+    <main id="view"></main>
   </div>
 
   <script src="assets/store.js"></script>

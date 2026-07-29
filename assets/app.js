@@ -1,328 +1,330 @@
 /* =====================================================================
-   Participant flow: pick your name → pick a tent → pick tentmates →
-   confirm. Falls back to a "request to organizer" when nothing fits.
+   Participant flow (dark redesign):
+   landing → pick your name → corturi (create your own or join one).
+   Tents are created by participants; anyone can make a cort.
    ===================================================================== */
 (function () {
   "use strict";
 
   var view = document.getElementById("view");
-  var stepsEl = document.getElementById("steps");
-  var state = { step: 1, me: null, tent: null, selected: new Set(), bookingOpen: true };
+  var app = document.getElementById("app");
+  var landing = document.getElementById("landing");
+  var state = { me: null, bookingOpen: true };
 
-  function setSteps(n) {
-    var dots = stepsEl.querySelectorAll(".dot");
-    dots.forEach(function (d, i) {
-      d.className = "dot" + (i + 1 < n ? " done" : i + 1 === n ? " active" : "");
-    });
+  function enterApp() {
+    landing.style.transition = "opacity .5s, transform .5s";
+    landing.style.opacity = "0"; landing.style.transform = "scale(1.04)";
+    setTimeout(function () {
+      landing.classList.add("hidden");
+      app.classList.remove("hidden");
+      window.scrollTo(0, 0);
+      renderName();
+    }, 460);
   }
 
-  function go(step) { state.step = step; render(); }
-
-  // ------------------------------------------------------------------ //
-  function render() {
-    setSteps(state.step);
-    if (state.step === 1) return renderPickName();
-    if (state.step === 2) return renderPickTent();
-    if (state.step === 3) return renderPickMates();
-    if (state.step === 4) return renderDone();
-  }
-
-  // ---- Step 1: who are you? ---------------------------------------- //
-  function renderPickName() {
+  // ---------------------------------------------------------------- //
+  function renderName() {
     view.innerHTML =
-      '<section class="hero fade-in">' +
-        '<span class="eyebrow">Pasul 1 din 3</span>' +
+      '<div class="screen-head">' +
+        '<span class="eyebrow-sm">Pasul 1</span>' +
         '<h1>Cine ești?</h1>' +
-        '<p>Caută-ți numele în listă ca să-ți alegi cortul și colegii.</p>' +
-      '</section>' +
+        '<p>Caută-ți numele ca să-ți alegi cortul.</p>' +
+      '</div>' +
       '<div class="search mt"><input class="input" id="q" placeholder="Caută-ți numele…" autocomplete="off" /></div>' +
       '<div class="person-list mt" id="people"></div>';
 
     Store.getParticipants().then(function (list) {
-      var box = document.getElementById("people");
-      var q = document.getElementById("q");
+      var box = document.getElementById("people"), q = document.getElementById("q");
       function draw() {
         var term = q.value.trim().toLowerCase();
-        var filtered = list.filter(function (p) { return p.name.toLowerCase().indexOf(term) >= 0; });
-        if (!filtered.length) { box.innerHTML = emptyState("🔍", "Niciun nume găsit."); return; }
+        var f = list.filter(function (p) { return p.name.toLowerCase().indexOf(term) >= 0; });
         box.innerHTML = "";
-        filtered.slice(0, 60).forEach(function (p) {
-          var assigned = p.tentId ? '<span class="meta">✓ deja repartizat</span>' : '<span class="meta">' + UI.genderLabel(p.gender) + '</span>';
+        if (!f.length) { box.innerHTML = empty("🔍", "Niciun nume găsit."); return; }
+        f.slice(0, 60).forEach(function (p) {
           var row = UI.el(
             '<button class="person">' + UI.avatar(p.name) +
-            '<span class="who"><span class="name">' + UI.esc(p.name) + '</span>' + assigned + '</span>' +
-            '<span style="font-size:1.2rem;color:var(--text-soft)">›</span></button>'
+            '<span class="who"><span class="name">' + UI.esc(p.name) + '</span>' +
+            '<span class="meta">' + (p.tentId ? "are un cort" : UI.genderLabel(p.gender)) + '</span></span>' +
+            '<span class="chev">›</span></button>'
           );
-          row.addEventListener("click", function () { state.me = p; state.selected = new Set(); go(2); });
+          row.addEventListener("click", function () { state.me = p; renderCorts(); });
           box.appendChild(row);
         });
       }
-      q.addEventListener("input", draw);
-      draw();
-      q.focus();
+      q.addEventListener("input", draw); draw();
     });
   }
 
-  // ---- Step 2: pick a tent ----------------------------------------- //
-  function renderPickTent() {
+  // ---------------------------------------------------------------- //
+  function renderCorts() {
     view.innerHTML =
-      '<section class="hero fade-in">' +
-        '<span class="eyebrow">Pasul 2 din 3 · ' + UI.esc(state.me.name) + '</span>' +
-        '<h1>Alege un cort</h1>' +
-        '<p>Corturi pentru ' + UI.genderLabel(state.me.gender).toLowerCase() + '. Vezi câte locuri sunt libere.</p>' +
-      '</section>' +
-      '<div id="assigned-banner"></div>' +
-      '<div class="section-title"><h2>Corturi disponibile</h2><span class="hint" id="livehint">actualizat live</span></div>' +
-      '<div class="grid" id="tents"></div>' +
-      '<button class="btn btn-ghost btn-block mt-lg" id="btn-back">← Nu sunt eu</button>';
+      '<div class="screen-head">' +
+        '<button class="back" id="back">‹ Nu sunt eu</button>' +
+        '<span class="eyebrow-sm">Salut, ' + UI.esc(state.me.name.split(" ")[0]) + ' 👋</span>' +
+        '<h1>Corturile voastre</h1>' +
+      '</div>' +
+      '<div id="mine-slot"></div>' +
+      '<div class="section-title"><h2>Corturi ' + UI.genderLabel(state.me.gender).toLowerCase() + '</h2><span class="hint">live</span></div>' +
+      '<div class="grid" id="corts"></div>';
 
-    document.getElementById("btn-back").addEventListener("click", function () { state.me = null; go(1); });
-    drawTents();
+    document.getElementById("back").addEventListener("click", function () { state.me = null; renderName(); });
+    drawCorts();
   }
 
-  function drawTents() {
+  function drawCorts() {
     Promise.all([Store.getTents(state.me.gender), Store.getSettings(), Store.getParticipant(state.me.id)])
       .then(function (res) {
-        var tents = res[0]; state.bookingOpen = res[1].bookingOpen;
-        state.me = res[2] || state.me; // refresh assignment
-        var box = document.getElementById("tents");
-        var banner = document.getElementById("assigned-banner");
+        var tents = res[0]; state.bookingOpen = res[1].bookingOpen; state.me = res[2] || state.me;
+        var mine = tents.find(function (t) { return t.occupants.some(function (o) { return o.id === state.me.id; }); });
+        var slot = document.getElementById("mine-slot");
+        var box = document.getElementById("corts");
 
-        // already assigned?
-        var mine = tents.find(function (t) {
-          return t.occupants.some(function (o) { return o.id === state.me.id; });
-        });
-        banner.innerHTML = "";
+        slot.innerHTML = "";
+        if (!state.bookingOpen) slot.insertAdjacentHTML("beforeend", '<div class="notice warn mt">🔒 Înscrierile sunt închise momentan.</div>');
+
         if (mine) {
-          var b = UI.el(
-            '<div class="card mt" style="border-color:var(--brand);background:var(--pine-50)">' +
-              '<div class="row-between"><div><strong>Ești în cortul „' + UI.esc(mine.name) + '"</strong>' +
-              '<div class="muted" style="font-size:.85rem">Colegi: ' + mine.occupants.map(function (o) { return UI.esc(o.name); }).join(", ") + '</div></div>' +
-              '<button class="btn btn-outline btn-sm" id="btn-leave">Schimbă cortul</button></div></div>'
+          var card = cortCard(mine, true);
+          slot.appendChild(UI.el('<div class="section-title" style="margin-top:6px"><h2>Cortul tău</h2><span class="hint">' + mine.occupied + '/' + mine.capacity + '</span></div>'));
+          slot.appendChild(card);
+        } else if (state.bookingOpen) {
+          var tile = UI.el(
+            '<button class="create-tile mt"><span class="plus">＋</span>' +
+            '<span class="grow"><span class="ct-title">Creează un cort</span>' +
+            '<span class="ct-sub">Tu alegi câte locuri și cine intră</span></span><span class="chev">›</span></button>'
           );
-          banner.appendChild(b);
-          document.getElementById("btn-leave").addEventListener("click", function () {
-            Store.leave(state.me.id).then(function () { UI.toast("Ai ieșit din cort. Alege altul.", "info"); drawTents(); });
-          });
-        }
-
-        if (!state.bookingOpen) {
-          banner.insertAdjacentHTML("afterbegin", '<div class="notice mt">🔒 Înscrierile sunt închise momentan. Poți vedea corturile, dar nu poți rezerva.</div>');
+          tile.addEventListener("click", openCreateSheet);
+          slot.appendChild(tile);
         }
 
         box.innerHTML = "";
-        tents.forEach(function (t) { box.appendChild(tentCard(t, mine)); });
-
-        // request fallback: no tent can fit even one more person
-        var anyFree = tents.some(function (t) { return t.free > 0; });
-        if (!anyFree && !mine) {
-          box.insertAdjacentHTML("afterend",
-            '<div class="notice mt-lg">😕 Toate corturile sunt pline. Poți trimite o cerere organizatorului.</div>');
-          var req = UI.el('<button class="btn btn-primary btn-block mt">✉️ Trimite o cerere</button>');
-          req.addEventListener("click", function () { openRequestSheet([state.me.id]); });
-          box.parentNode.insertBefore(req, document.getElementById("btn-back"));
-        }
+        if (!tents.length) { box.innerHTML = empty("⛺", "Niciun cort încă. Fii primul care creează unul!"); return; }
+        tents.forEach(function (t) {
+          var isMine = mine && mine.id === t.id;
+          box.appendChild(cortCard(t, isMine));
+        });
       });
   }
 
-  function tentCard(t, mine) {
-    var iAmHere = mine && mine.id === t.id;
-    var full = t.free <= 0 && !iAmHere;
+  function cortCard(t, isMine) {
+    var full = t.free <= 0 && !isMine;
     var pips = "";
     for (var i = 0; i < t.capacity; i++) pips += '<span class="pip' + (i < t.occupied ? " on" : "") + '"></span>';
     var occ = t.occupants.length
-      ? '<div class="avatar-stack">' + t.occupants.slice(0, 6).map(function (o) { return UI.avatar(o.name, "sm"); }).join("") + '</div>' +
-        '<span class="muted" style="font-size:.82rem">' + t.occupants.map(function (o) { return UI.esc(o.name.split(" ")[0]); }).join(", ") + '</span>'
-      : '<span class="none">Cort gol — fii primul!</span>';
-
-    var freeTxt = full
-      ? '<span class="badge badge-full">Plin</span>'
-      : '<span class="free">' + t.free + ' ' + (t.free === 1 ? "loc liber" : "locuri libere") + '</span>';
+      ? '<div class="avatar-stack">' + t.occupants.slice(0, 7).map(function (o) { return UI.avatar(o.name, "sm"); }).join("") + '</div>'
+      : '<span class="none">Gol — fii primul!</span>';
+    var right = isMine ? '<span class="badge badge-you">Cortul tău</span>'
+      : full ? '<span class="badge badge-full">Plin</span>'
+      : '<span class="free">' + t.free + ' ' + (t.free === 1 ? "loc" : "locuri") + '</span>';
 
     var card = UI.el(
-      '<div class="tent ' + (full ? "full" : "") + '">' +
-        '<div class="row"><div class="tent-icon">⛺</div>' +
-          '<div class="grow"><div class="tent-name">' + UI.esc(t.name) + '</div>' +
-          '<div class="tent-sub">' + t.capacity + ' persoane · ' + UI.genderLabel(t.gender) + '</div></div>' +
-          (iAmHere ? '<span class="badge badge-ok">Cortul tău</span>' : "") +
-        '</div>' +
+      '<div class="cort ' + (full ? "full " : "") + (isMine ? "mine" : "") + '">' +
+        '<div class="row"><div class="cort-emoji">' + UI.tentEmoji(t) + '</div>' +
+          '<div class="grow"><div class="cort-name">' + UI.esc(UI.tentName(t)) + '</div>' +
+          '<div class="cort-sub">' + t.capacity + ' locuri · făcut de ' + UI.esc(t.createdByName) + '</div></div></div>' +
         '<div class="meter">' + pips + '</div>' +
-        '<div class="capline"><span class="occupants">' + occ + '</span>' + freeTxt + '</div>' +
+        '<div class="capline"><span class="occupants">' + occ + '</span>' + right + '</div>' +
       '</div>'
     );
-    if (!full && state.bookingOpen && !iAmHere) {
-      card.addEventListener("click", function () {
-        // if assigned elsewhere, leave first
-        if (state.me.tentId && state.me.tentId !== t.id) {
-          Store.leave(state.me.id).then(function () { state.me.tentId = null; enterTent(t); });
-        } else { enterTent(t); }
-      });
-    }
+    card.addEventListener("click", function () { openTentSheet(t.id); });
     return card;
   }
 
-  function enterTent(t) {
-    state.tent = t; state.selected = new Set([state.me.id]); go(3);
-  }
+  // ---- Tent detail / join ----------------------------------------- //
+  function openTentSheet(tentId) {
+    Promise.all([Store.getTent(tentId), Store.getParticipants(), Store.getParticipant(state.me.id)]).then(function (res) {
+      var t = res[0], all = res[1]; state.me = res[2] || state.me;
+      if (!t) { UI.toast("Cortul nu mai există.", "err"); drawCorts(); return; }
+      var iAmHere = t.occupants.some(function (o) { return o.id === state.me.id; });
+      var inOther = state.me.tentId && state.me.tentId !== t.id;
+      var full = t.free <= 0;
 
-  // ---- Step 3: pick tentmates -------------------------------------- //
-  function renderPickMates() {
-    var t = state.tent;
-    view.innerHTML =
-      '<section class="hero fade-in">' +
-        '<span class="eyebrow">Pasul 3 din 3 · Cortul „' + UI.esc(t.name) + '"</span>' +
-        '<h1>Cu cine stai?</h1>' +
-        '<p>Alege colegii din listă. Poți lăsa locuri libere — se pot alătura mai târziu.</p>' +
-      '</section>' +
-      '<div class="card mt">' +
-        '<div class="row-between"><strong>Locuri</strong><span id="cap-label" class="badge badge-soft"></span></div>' +
-        '<div class="meter mt" id="cap-meter"></div>' +
-      '</div>' +
-      '<div class="section-title"><h2>Persoane disponibile</h2><span class="hint">' + UI.genderLabel(t.gender) + '</span></div>' +
-      '<div class="person-list" id="mates"></div>' +
-      '<button class="btn btn-ghost btn-block mt-lg" id="btn-back2">← Alt cort</button>' +
-      '<div class="sticky-cta"><div class="inner">' +
-        '<button class="btn btn-primary btn-block" id="btn-book">Rezervă cortul</button>' +
-      '</div></div>';
+      var members = t.occupants.map(function (o) {
+        return '<div class="person" style="cursor:default">' + UI.avatar(o.name) +
+          '<span class="who"><span class="name">' + UI.esc(o.name) + (o.id === state.me.id ? ' <span class="badge badge-you">tu</span>' : "") + '</span></span></div>';
+      }).join("");
 
-    document.getElementById("btn-back2").addEventListener("click", function () { go(2); });
-    document.getElementById("btn-book").addEventListener("click", submitBooking);
+      var action;
+      if (iAmHere) {
+        action = '<button class="btn btn-danger btn-block" id="leave">Ieși din cort</button>';
+      } else if (inOther) {
+        action = '<div class="notice warn">Ești deja în alt cort. Ieși din el ca să te muți aici.</div>' +
+                 '<button class="btn btn-outline btn-block mt" id="leave-move">Ieși din cortul actual</button>';
+      } else if (full) {
+        action = '<div class="notice warn">Cortul e plin.</div>' +
+                 '<button class="btn btn-glass btn-block mt" id="req">Trimite o cerere organizatorului</button>';
+      } else if (!state.bookingOpen) {
+        action = '<div class="notice warn">Înscrierile sunt închise.</div>';
+      } else {
+        action = '<div id="bring"></div><button class="btn btn-primary btn-block" id="join">Alătură-te cortului</button>';
+      }
 
-    Store.getParticipants().then(function (list) {
-      // people addable: same gender + unassigned (or it's me)
-      var addable = list.filter(function (p) {
-        return p.gender === t.gender && (!p.tentId || p.id === state.me.id);
+      UI.openSheet(
+        '<div class="row" style="gap:12px;margin-bottom:4px"><div class="cort-emoji">' + UI.tentEmoji(t) + '</div>' +
+          '<div class="grow"><h2 style="font-size:1.3rem">' + UI.esc(UI.tentName(t)) + '</h2>' +
+          '<div class="muted" style="font-size:.85rem">' + t.occupied + '/' + t.capacity + ' · ' + UI.genderLabel(t.gender) + '</div></div></div>' +
+        '<div class="section-title" style="margin:14px 2px 10px"><h2 style="font-size:.95rem">În cort</h2></div>' +
+        '<div class="person-list">' + members + '</div>' +
+        '<div class="mt-lg">' + action + '</div>'
+      );
+
+      if (iAmHere) document.getElementById("leave").addEventListener("click", function () {
+        Store.leave(state.me.id).then(function () { UI.closeSheet(); UI.toast("Ai ieșit din cort.", "info"); drawCorts(); });
       });
-      // me first
-      addable.sort(function (a, b) {
-        if (a.id === state.me.id) return -1; if (b.id === state.me.id) return 1;
-        return a.name.localeCompare(b.name, "ro");
+      if (inOther) document.getElementById("leave-move").addEventListener("click", function () {
+        Store.leave(state.me.id).then(function () { openTentSheet(tentId); });
       });
-      var box = document.getElementById("mates");
-      box.innerHTML = "";
-      addable.forEach(function (p) {
-        var isMe = p.id === state.me.id;
-        var row = UI.el(
-          '<button class="person' + (state.selected.has(p.id) ? " selected" : "") + '">' +
-            UI.avatar(p.name) +
-            '<span class="who"><span class="name">' + UI.esc(p.name) + (isMe ? ' <span class="badge badge-soft">tu</span>' : "") + '</span>' +
-            '<span class="meta">' + UI.genderLabel(p.gender) + '</span></span>' +
-            '<span class="check"></span></button>'
-        );
-        row.addEventListener("click", function () {
-          if (isMe) return; // you are always in
-          if (state.selected.has(p.id)) state.selected.delete(p.id);
-          else {
-            if (state.selected.size >= t.capacity) { UI.toast("Cortul are doar " + t.capacity + " locuri.", "err"); return; }
-            state.selected.add(p.id);
-          }
-          row.classList.toggle("selected");
-          updateCap();
+      if (full && !iAmHere && !inOther) document.getElementById("req").addEventListener("click", function () { openRequestSheet([state.me.id]); });
+
+      if (!iAmHere && !inOther && !full && state.bookingOpen) {
+        var canBring = t.free - 1;
+        var picker = buildPeoplePicker(all, state.me, canBring, "Aduci pe cineva? (opțional)");
+        document.getElementById("bring").appendChild(picker.el);
+        document.getElementById("join").addEventListener("click", function () {
+          var ids = [state.me.id].concat(picker.selected());
+          Store.joinTent(t.id, ids).then(function (r) {
+            if (r.ok) { UI.closeSheet(); renderDone(r.tent); }
+            else UI.toast(r.message, "err");
+          });
         });
-        box.appendChild(row);
-      });
-      updateCap();
-    });
-  }
-
-  function updateCap() {
-    var t = state.tent, sel = state.selected.size;
-    var meter = document.getElementById("cap-meter");
-    var label = document.getElementById("cap-label");
-    if (!meter) return;
-    var html = "";
-    for (var i = 0; i < t.capacity; i++) html += '<span class="pip' + (i < sel ? " you" : "") + '"></span>';
-    meter.innerHTML = html;
-    label.textContent = sel + " / " + t.capacity + " ales" + (sel === 1 ? "" : "e");
-    document.getElementById("btn-book").textContent =
-      sel >= t.capacity ? "Rezervă cortul (complet)" : "Rezervă cortul (" + sel + "/" + t.capacity + ")";
-  }
-
-  function submitBooking() {
-    var btn = document.getElementById("btn-book");
-    btn.disabled = true; btn.textContent = "Se rezervă…";
-    Store.book(state.tent.id, Array.from(state.selected)).then(function (res) {
-      if (res.ok) { state.result = res.tent; go(4); }
-      else {
-        btn.disabled = false; updateCap();
-        UI.toast(res.message, "err");
-        if (res.code === "no_space") offerRequest();
       }
     });
   }
 
-  function offerRequest() {
-    var ids = Array.from(state.selected);
-    var box = document.getElementById("mates");
-    if (document.getElementById("inline-req")) return;
-    var n = UI.el('<div id="inline-req" class="notice mt">Nu mai e loc aici. <a href="#" id="mk-req"><strong>Trimite o cerere organizatorului →</strong></a></div>');
-    box.parentNode.insertBefore(n, box);
-    document.getElementById("mk-req").addEventListener("click", function (e) { e.preventDefault(); openRequestSheet(ids); });
-  }
+  // ---- Create cort ------------------------------------------------ //
+  function openCreateSheet() {
+    Store.getParticipants().then(function (all) {
+      var caps = [2, 3, 4, 5, 6, 7, 8];
+      var chips = caps.map(function (n) {
+        return '<button class="cap-opt' + (n === 4 ? " active" : "") + '" data-n="' + n + '"><span class="n">' + n + '</span><span class="l">pers.</span></button>';
+      }).join("");
 
-  // ---- Step 4: confirmation ---------------------------------------- //
-  function renderDone() {
-    var t = state.result;
-    setSteps(4);
-    view.innerHTML =
-      '<div class="card fade-in" style="overflow:hidden;padding:0">' +
-        '<div class="confirm-hero"><div class="mark">✓</div>' +
-          '<h1>Gata! Ești în cort.</h1>' +
-          '<p class="muted mt">Te-am repartizat în cortul <strong>„' + UI.esc(t.name) + '"</strong>.</p>' +
-        '</div>' +
-        '<div style="padding:0 18px 18px">' +
-          '<div class="section-title" style="margin:8px 2px 10px"><h2>Colegi de cort</h2><span class="hint">' + t.occupants.length + '/' + t.capacity + '</span></div>' +
-          '<div class="person-list" id="final-list"></div>' +
-          (t.free > 0 ? '<div class="notice mt">' + t.free + ' ' + (t.free === 1 ? "loc rămas liber" : "locuri rămase libere") + ' — se pot alătura și alții.</div>' : "") +
-        '</div>' +
-      '</div>' +
-      '<button class="btn btn-brand btn-block mt-lg" id="btn-home">Termină</button>' +
-      '<button class="btn btn-ghost btn-block mt" id="btn-change">Schimbă cortul</button>';
-
-    var fl = document.getElementById("final-list");
-    t.occupants.forEach(function (o) {
-      fl.appendChild(UI.el('<div class="person" style="cursor:default">' + UI.avatar(o.name) +
-        '<span class="who"><span class="name">' + UI.esc(o.name) + (o.id === state.me.id ? ' <span class="badge badge-soft">tu</span>' : "") + '</span></span></div>'));
-    });
-    UI.confetti();
-    document.getElementById("btn-home").addEventListener("click", function () { state = { step: 1, me: null, tent: null, selected: new Set(), bookingOpen: state.bookingOpen }; go(1); });
-    document.getElementById("btn-change").addEventListener("click", function () {
-      Store.leave(state.me.id).then(function () { go(2); });
-    });
-  }
-
-  // ---- Request sheet ----------------------------------------------- //
-  function openRequestSheet(ids) {
-    Store.getParticipants().then(function (list) {
-      var names = ids.map(function (id) { var p = list.find(function (x) { return x.id === id; }); return p ? p.name : ""; });
       UI.openSheet(
-        '<h2>Trimite o cerere</h2>' +
-        '<p class="muted mt">Organizatorul va vedea cererea și te va ajuta cu repartizarea.</p>' +
-        '<div class="card mt"><strong>Grup:</strong> ' + names.map(UI.esc).join(", ") + '</div>' +
-        '<div class="field mt"><label>Mesaj (opțional)</label><textarea class="input" id="req-note" rows="3" placeholder="Ex: vrem să stăm împreună, dar nu mai e loc…"></textarea></div>' +
-        '<button class="btn btn-primary btn-block" id="req-send">Trimite cererea</button>' +
-        '<button class="btn btn-ghost btn-block mt" id="req-cancel">Anulează</button>'
+        '<h2>Creează un cort</h2>' +
+        '<p class="muted mt" style="font-size:.9rem">Alege câte locuri are cortul. Poți invita colegi acum sau îi lași să intre singuri.</p>' +
+        '<div class="field mt-lg"><label>Câte locuri?</label><div class="cap-grid" id="caps">' + chips + '</div></div>' +
+        '<div class="field"><label>Nume cort (opțional)</label><input class="input" id="cname" maxlength="28" placeholder="ex: Lupii de noapte" /></div>' +
+        '<div id="bring"></div>' +
+        '<button class="btn btn-primary btn-block mt" id="create">Creează cortul</button>' +
+        '<button class="btn btn-ghost btn-block mt" id="cancel">Anulează</button>'
       );
-      document.getElementById("req-cancel").addEventListener("click", UI.closeSheet);
-      document.getElementById("req-send").addEventListener("click", function () {
-        var note = document.getElementById("req-note").value;
-        Store.createRequest(state.me.id, ids, note).then(function () {
-          UI.closeSheet(); UI.toast("Cererea a fost trimisă! ✉️", "ok");
+
+      var capacity = 4;
+      var caEls = Array.prototype.slice.call(document.querySelectorAll(".cap-opt"));
+      var picker = buildPeoplePicker(all, state.me, capacity - 1, "Invită colegi acum (opțional)");
+      document.getElementById("bring").appendChild(picker.el);
+
+      caEls.forEach(function (b) {
+        b.addEventListener("click", function () {
+          caEls.forEach(function (x) { x.classList.remove("active"); });
+          b.classList.add("active");
+          capacity = parseInt(b.dataset.n, 10);
+          picker.setMax(capacity - 1);
+        });
+      });
+      document.getElementById("cancel").addEventListener("click", UI.closeSheet);
+      document.getElementById("create").addEventListener("click", function () {
+        var name = document.getElementById("cname").value;
+        Store.createTent(state.me.id, capacity, name, picker.selected()).then(function (r) {
+          if (r.ok) { UI.closeSheet(); renderDone(r.tent); }
+          else UI.toast(r.message, "err");
         });
       });
     });
   }
 
-  function emptyState(ico, msg) {
-    return '<div class="empty"><div class="ico">' + ico + '</div><p>' + UI.esc(msg) + '</p></div>';
+  // reusable checkbox picker of FREE same-gender people (excludes me)
+  function buildPeoplePicker(all, me, max, label) {
+    var free = all.filter(function (p) { return p.gender === me.gender && !p.tentId && p.id !== me.id; });
+    var selected = new Set();
+    var wrap = UI.el('<div class="field"><label>' + UI.esc(label) + ' <span class="muted" id="pk-count"></span></label><div class="person-list" id="pk-list"></div></div>');
+    if (!free.length) wrap.querySelector("#pk-list").innerHTML = '<div class="muted" style="font-size:.86rem;padding:4px 2px">Nimeni liber momentan — pot intra mai târziu.</div>';
+
+    function refresh() {
+      var c = wrap.querySelector("#pk-count");
+      c.textContent = max > 0 ? "(" + selected.size + "/" + max + ")" : "(cort plin cu tine)";
+    }
+    free.forEach(function (p) {
+      var row = UI.el('<button class="person" data-id="' + p.id + '"><span class="check"></span>' + UI.avatar(p.name, "sm") +
+        '<span class="who"><span class="name">' + UI.esc(p.name) + '</span></span></button>');
+      row.addEventListener("click", function () {
+        if (selected.has(p.id)) { selected.delete(p.id); row.classList.remove("selected"); }
+        else {
+          if (max <= 0) { UI.toast("Nu mai e loc pentru alții.", "err"); return; }
+          if (selected.size >= max) { UI.toast("Poți aduce maxim " + max + ".", "err"); return; }
+          selected.add(p.id); row.classList.add("selected");
+        }
+        refresh();
+      });
+      wrap.querySelector("#pk-list").appendChild(row);
+    });
+    refresh();
+    return {
+      el: wrap,
+      selected: function () { return Array.from(selected); },
+      setMax: function (m) {
+        max = Math.max(0, m);
+        while (selected.size > max) { selected.delete(selected.values().next().value); }
+        Array.prototype.forEach.call(wrap.querySelectorAll(".person"), function (r) {
+          r.classList.toggle("selected", selected.has(r.dataset.id));
+        });
+        refresh();
+      }
+    };
   }
 
-  // ---- boot -------------------------------------------------------- //
-  Store.init().then(function () {
-    return Store.getSettings();
-  }).then(function (s) {
+  // ---- Confirmation ----------------------------------------------- //
+  function renderDone(t) {
+    view.innerHTML =
+      '<div class="fade-in">' +
+        '<div class="confirm-hero"><div class="confirm-mark">✓</div>' +
+          '<h1>Ești în cort!</h1>' +
+          '<p class="muted mt">' + UI.esc(UI.tentName(t)) + '</p></div>' +
+        '<div class="card mt-lg">' +
+          '<div class="section-title" style="margin:2px 2px 10px"><h2 style="font-size:1rem">Colegi de cort</h2><span class="hint">' + t.occupants.length + '/' + t.capacity + '</span></div>' +
+          '<div class="person-list" id="dl"></div>' +
+          (t.free > 0 ? '<div class="notice mt">' + t.free + ' ' + (t.free === 1 ? "loc liber" : "locuri libere") + ' — se mai pot alătura.</div>' : "") +
+        '</div>' +
+      '</div>' +
+      '<button class="btn btn-primary btn-block mt-lg" id="ok">Gata</button>' +
+      '<button class="btn btn-ghost btn-block mt" id="leave">Ieși din cort</button>';
+
+    var dl = document.getElementById("dl");
+    t.occupants.forEach(function (o) {
+      dl.appendChild(UI.el('<div class="person" style="cursor:default">' + UI.avatar(o.name) +
+        '<span class="who"><span class="name">' + UI.esc(o.name) + (o.id === state.me.id ? ' <span class="badge badge-you">tu</span>' : "") + '</span></span></div>'));
+    });
+    document.getElementById("ok").addEventListener("click", renderCorts);
+    document.getElementById("leave").addEventListener("click", function () {
+      Store.leave(state.me.id).then(function () { UI.toast("Ai ieșit din cort.", "info"); renderCorts(); });
+    });
+  }
+
+  // ---- Request ---------------------------------------------------- //
+  function openRequestSheet(ids) {
+    Store.getParticipants().then(function (all) {
+      var names = ids.map(function (id) { var p = all.find(function (x) { return x.id === id; }); return p ? p.name : ""; });
+      UI.openSheet(
+        '<h2>Trimite o cerere</h2>' +
+        '<p class="muted mt" style="font-size:.9rem">Organizatorul o vede și te ajută cu repartizarea.</p>' +
+        '<div class="card mt"><strong>Pentru:</strong> ' + names.map(UI.esc).join(", ") + '</div>' +
+        '<div class="field mt"><label>Mesaj (opțional)</label><textarea class="input" id="note" rows="3" placeholder="ex: vrem să stăm împreună…"></textarea></div>' +
+        '<button class="btn btn-primary btn-block" id="send">Trimite cererea</button>' +
+        '<button class="btn btn-ghost btn-block mt" id="cancel">Anulează</button>'
+      );
+      document.getElementById("cancel").addEventListener("click", UI.closeSheet);
+      document.getElementById("send").addEventListener("click", function () {
+        Store.createRequest(state.me.id, ids, document.getElementById("note").value).then(function () {
+          UI.closeSheet(); UI.toast("Cererea a fost trimisă ✉️", "ok");
+        });
+      });
+    });
+  }
+
+  function empty(ico, msg) { return '<div class="empty"><div class="ico">' + ico + '</div><p>' + UI.esc(msg) + '</p></div>'; }
+
+  // ---- boot ------------------------------------------------------- //
+  Store.init().then(function () { return Store.getSettings(); }).then(function (s) {
     document.getElementById("event-name").textContent = s.eventName;
-    document.title = s.eventName + " — Corturi";
-    render();
+    document.getElementById("enter").addEventListener("click", enterApp);
   });
 })();

@@ -1,68 +1,74 @@
-# ⛺ Corturi de Tabără — repartizare pe corturi
+# 🏔️ Corturi · Tabăra Făgăraș
 
-Un mic site prin care participanții la tabără **își aleg singuri cortul și colegii de cort**,
-cu validare automată (fără dublă-ocupare, respectă capacitatea și genul). Are și un **panou
-de organizator** pentru gestionarea participanților, corturilor și cererilor.
+Site prin care participanții la tabără **își fac singuri corturile** și aleg cu cine stau.
+Oricine poate **crea un cort** (alege câte locuri are) sau **intra în cortul prietenilor**,
+cu validare automată (fără dublă-ocupare, respectă capacitatea și genul). Are și un
+**panou de organizator**.
+
+Design **dark, modern**, cu pagină de start și **video din Munții Făgăraș** în hero.
 
 > Starea actuală: **frontend complet, funcțional**, cu date demo salvate local în browser
-> (`localStorage`). Backend-ul real (Supabase) se conectează într-un pas separat — vezi mai jos.
+> (`localStorage`). Backend-ul real (Supabase) se conectează într-un pas separat (vezi jos).
 
-## Ce poți face acum
+## Fluxul
 
-- **Participant** (`index.html`):
-  1. Îți cauți numele în listă.
-  2. Vezi corturile pentru genul tău, cu locurile libere live.
-  3. Alegi un cort și bifezi colegii (rezervare parțială permisă — ceilalți se alătură mai târziu).
-  4. Confirmi. Dacă nu mai e loc nicăieri, poți trimite o **cerere** organizatorului.
-- **Organizator** (`admin.html`, PIN implicit `1234`):
-  - **Repartizare** — vedere live pe corturi + scoate persoane.
-  - **Corturi** — adaugă/editează/șterge (nume, gen, capacitate).
-  - **Participanți** — adăugare în masă („Nume, gen" pe fiecare linie), ștergere.
-  - **Cereri** — aprobă/respinge cererile.
-  - **Setări** — nume tabără, deschide/închide înscrierile, schimbă PIN, golește repartizările.
+**Participant** (`index.html`):
+1. **Start page** cu video Făgăraș → „Începe".
+2. Îți cauți numele în listă.
+3. Vezi corturile pentru genul tău (live). Poți:
+   - **Crea un cort** — alegi câte locuri (2–8), un nume opțional, și poți invita colegi pe loc.
+   - **Intra într-un cort** existent (dacă are locuri) — singur sau aducând colegi.
+4. Confirmare cu colegii de cort. Rezervarea parțială e permisă (alții se pot alătura până se umple).
+   Dacă un cort e plin, poți trimite o **cerere** organizatorului.
+
+**Organizator** (`admin.html`, PIN implicit `1234`):
+- **Repartizare** — vedere live pe corturi + scoate persoane.
+- **Corturi** — vezi/șterge corturile create de participanți.
+- **Participanți** — adăugare în masă („Nume, gen" pe fiecare linie), ștergere.
+- **Cereri** — aprobă/respinge.
+- **Setări** — nume tabără, deschide/închide înscrierile, schimbă PIN, șterge corturile.
 
 ## Structură
 
 ```
-index.html          Fluxul participantului
+index.html          Landing (video) + fluxul participantului
 admin.html          Panoul organizatorului
-assets/styles.css   Design system (temă de tabără, mobile-first, light/dark)
-assets/store.js     Stratul de date (acum localStorage + date demo; interfața rămâne la fel când trecem pe Supabase)
-assets/ui.js        Helperi UI comuni (avatare, toast, sheet-uri)
-assets/app.js       Logica participantului
+assets/styles.css   Design system dark (glassmorphism, aurora, Space Grotesk/Inter)
+assets/store.js     Stratul de date (localStorage + demo; interfața rămâne la fel la trecerea pe Supabase)
+assets/ui.js        Helperi UI comuni
+assets/app.js       Logica participantului (creează/intră în cort)
 assets/admin.js     Logica organizatorului
+assets/media/       hero.mp4 + hero-poster.jpg (fundal video)
 ```
 
-Toată logica UI folosește obiectul `Store` (din `assets/store.js`) prin metode `async`.
-Când conectăm Supabase, rescriem doar `store.js` — restul site-ului rămâne neschimbat.
+Toată logica UI folosește obiectul `Store` prin metode `async`. La conectarea Supabase se
+rescrie **doar `store.js`** — restul rămâne neschimbat.
+
+## Video-ul din hero
+
+`assets/media/hero.mp4` (720p, ~2 MB, redat mut & în buclă) + `hero-poster.jpg` ca fallback.
+Sursă: stock video gratuit de pe [Pexels](https://www.pexels.com) (Pexels License — gratuit,
+fără atribuire obligatorie). Îl poți înlocui cu orice alt clip (ex: un video real din Făgăraș) —
+doar suprascrie cele două fișiere.
 
 ## Rulare locală
 
-Orice server static simplu:
-
 ```bash
 python3 -m http.server 8099
-# apoi deschide http://localhost:8099/index.html
+# http://localhost:8099/index.html
 ```
 
-Datele demo se resetează din **Setări → „Resetează datele demo"** (sau ștergând
-localStorage-ul browserului).
+Reset date demo: **Setări → „Resetează datele demo"** (sau golește localStorage).
 
 ## Publicare (gratuit)
 
-- **GitHub Pages**: Settings → Pages → Branch → `/` (root). Site instant.
-- Sau **Netlify / Vercel**: drag & drop folderul. Nu e nimic de compilat.
+- **GitHub Pages**: Settings → Pages → Branch → `/` (root).
+- Sau **Netlify / Vercel**: drag & drop folderul. Nimic de compilat.
 
 ## Pasul următor: backend real (Supabase)
 
-Pentru ca toți participanții să vadă **aceleași** corturi în timp real (nu doar local în
-browser), datele trebuie într-o bază de date comună. Planul:
-
-1. Tabele `camp_tents`, `camp_participants`, `camp_assignments`, `camp_requests`, `camp_settings`.
-2. Toate rezervările prin funcții Postgres (`SECURITY DEFINER`) care validează atomic
-   (blochează cortul cu `FOR UPDATE`, constrângere `UNIQUE` pe participant → un singur cort).
-3. Un `store.js` nou care apelează aceste funcții (RPC) prin `@supabase/supabase-js`.
-   Interfața publică rămâne identică, deci UI-ul nu se schimbă.
-4. Cheia *publishable* e publică (safe de comis); PIN-ul de admin stă doar în baza de date.
-
-Proiectul Supabase există deja și e pregătit pentru acest pas.
+Ca toți să vadă **aceleași** corturi live (nu doar local în browser), datele merg într-o bază
+comună. Plan: tabele `camp_tents` (cu `created_by`), `camp_participants`, `camp_requests`,
+`camp_settings`; funcții Postgres `SECURITY DEFINER` care validează atomic (create/join cu
+`FOR UPDATE` + `UNIQUE` pe participant); un `store.js` nou care le apelează prin
+`@supabase/supabase-js`. Proiectul Supabase există deja și e pregătit.
