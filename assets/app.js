@@ -204,7 +204,7 @@
       UI.openSheet(
         '<h2>Creează un cort</h2><p class="muted mt" style="font-size:.9rem">Alege câte locuri are. Pe cei aleși îi <strong>inviți</strong> — ei acceptă din contul lor.</p>' +
         '<div class="field mt-lg"><label>Câte locuri?</label><div class="cap-grid" id="caps">' + chips + '</div></div>' +
-        '<div class="field"><label>Nume cort (opțional)</label><input class="input" id="cname" maxlength="28" placeholder="ex: Lupii de noapte" /></div>' +
+        '<div class="field"><label>Nume cort (opțional)</label><input class="input" id="cname" maxlength="28" placeholder="" /></div>' +
         '<div id="bring"></div><button class="btn btn-primary btn-block mt" id="create">Creează cortul</button><button class="btn btn-ghost btn-block mt" id="cancel">Anulează</button>'
       );
       var capacity = 4;
