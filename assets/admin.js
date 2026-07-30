@@ -146,27 +146,46 @@
   function renderParticipants(p) {
     p.innerHTML =
       '<button class="btn btn-primary btn-block" id="bulk">＋ Adaugă participanți</button>' +
+      '<div class="notice mt" style="font-size:.85rem">Verifică genurile — unele au fost <strong>ghicite</strong> din nume. Apasă M/F ca să corectezi. Filtrează după gen mai jos.</div>' +
       '<div class="search mt"><input class="input" id="pq" placeholder="Caută…" /></div>' +
+      '<div class="row mt" style="gap:6px"><button class="btn btn-glass btn-sm gf active" data-g="all">Toți</button>' +
+      '<button class="btn btn-glass btn-sm gf" data-g="M">Băieți</button>' +
+      '<button class="btn btn-glass btn-sm gf" data-g="F">Fete</button>' +
+      '<span class="grow"></span><span class="muted" id="pcount" style="font-size:.82rem"></span></div>' +
       '<div class="person-list mt" id="plist"></div>';
     document.getElementById("bulk").addEventListener("click", bulkSheet);
+    var filter = "all";
     Store.getParticipants().then(function (list) {
       var box = document.getElementById("plist"), q = document.getElementById("pq");
       function draw() {
         var term = q.value.trim().toLowerCase();
-        var f = list.filter(function (x) { return x.name.toLowerCase().indexOf(term) >= 0; });
+        var f = list.filter(function (x) { return x.name.toLowerCase().indexOf(term) >= 0 && (filter === "all" || x.gender === filter); });
+        document.getElementById("pcount").textContent = f.length + " / " + list.length;
         box.innerHTML = "";
         if (!f.length) { box.innerHTML = '<div class="empty"><div class="ico">🧑‍🤝‍🧑</div><p>Niciun participant.</p></div>'; return; }
         f.forEach(function (x) {
           var row = UI.el('<div class="person" style="cursor:default">' + UI.avatar(x.name) +
             '<span class="who"><span class="name">' + UI.esc(x.name) + '</span>' +
-            '<span class="meta">' + UI.genderLabel(x.gender) + (x.tentId ? " · are cort" : " · liber") + '</span></span>' +
-            '<button class="btn btn-danger btn-sm">🗑️</button></div>');
-          row.querySelector("button").addEventListener("click", function () {
-            if (confirm('Ștergi pe „' + x.name + '"?')) Store.deleteParticipant(x.id).then(function () { renderParticipants(p); });
+            '<span class="meta">' + (x.tentId ? "are cort" : "liber") + '</span></span>' +
+            '<span class="gtoggle" style="display:inline-flex;gap:3px;margin-right:6px">' +
+            '<button class="btn btn-sm gm" style="padding:6px 10px;' + (x.gender === "M" ? "background:var(--grad);color:var(--ink)" : "background:var(--glass);color:var(--text-soft)") + '">M</button>' +
+            '<button class="btn btn-sm gf2" style="padding:6px 10px;' + (x.gender === "F" ? "background:var(--grad);color:var(--ink)" : "background:var(--glass);color:var(--text-soft)") + '">F</button></span>' +
+            '<button class="btn btn-glass btn-sm ph" title="Telefon" style="padding:6px 9px">📱</button>' +
+            '<button class="btn btn-danger btn-sm del" style="padding:6px 9px">🗑️</button></div>');
+          function setG(g) { if (x.gender === g) return; x.gender = g; Store.setGender(x.id, g).then(function () { draw(); }); }
+          row.querySelector(".gm").addEventListener("click", function () { setG("M"); });
+          row.querySelector(".gf2").addEventListener("click", function () { setG("F"); });
+          row.querySelector(".ph").addEventListener("click", function () {
+            var v = prompt("Telefon pentru " + x.name + " (pentru verificare). Lasă gol ca să anulezi:", "");
+            if (v && v.trim()) Store.setPhone(x.id, v.trim()).then(function () { UI.toast("Telefon salvat.", "ok"); });
           });
+          row.querySelector(".del").addEventListener("click", function () { if (confirm('Ștergi pe „' + x.name + '"?')) Store.deleteParticipant(x.id).then(function () { renderParticipants(p); }); });
           box.appendChild(row);
         });
       }
+      Array.prototype.forEach.call(document.querySelectorAll(".gf"), function (b) {
+        b.addEventListener("click", function () { Array.prototype.forEach.call(document.querySelectorAll(".gf"), function (x) { x.classList.remove("active"); }); b.classList.add("active"); filter = b.dataset.g; draw(); });
+      });
       q.addEventListener("input", draw); draw();
     });
   }
@@ -174,9 +193,9 @@
   function bulkSheet() {
     UI.openSheet(
       '<h2>Adaugă participanți</h2>' +
-      '<p class="muted mt" style="font-size:.9rem">Câte unul pe linie: <strong>Nume, gen</strong> (M sau F).</p>' +
-      '<div class="card mt" style="font-family:monospace;font-size:.85rem;white-space:pre;color:var(--text-soft)">Andrei, M\nMaria, F\nVlad, M</div>' +
-      '<div class="field mt"><textarea class="input" id="txt" rows="8" placeholder="Andrei, M&#10;Maria, F"></textarea></div>' +
+      '<p class="muted mt" style="font-size:.9rem">Câte unul pe linie: <strong>Nume, gen, telefon</strong>. Telefonul e opțional (pentru verificare).</p>' +
+      '<div class="card mt" style="font-family:monospace;font-size:.85rem;white-space:pre;color:var(--text-soft)">Andrei, M, 0722123456\nMaria, F</div>' +
+      '<div class="field mt"><textarea class="input" id="txt" rows="8" placeholder="Andrei, M, 0722123456&#10;Maria, F"></textarea></div>' +
       '<button class="btn btn-primary btn-block" id="save">Adaugă toți</button>' +
       '<button class="btn btn-ghost btn-block mt" id="cancel">Anulează</button>'
     );
@@ -185,11 +204,11 @@
       var rows = [];
       document.getElementById("txt").value.split("\n").forEach(function (ln) {
         ln = ln.trim(); if (!ln) return;
-        var parts = ln.split(","), name = parts[0].trim(), g = (parts[1] || "M").trim().toUpperCase();
-        if (name) rows.push({ name: name, gender: g === "F" ? "F" : "M" });
+        var parts = ln.split(","), name = (parts[0] || "").trim(), g = (parts[1] || "M").trim().toUpperCase(), phone = (parts[2] || "").trim();
+        if (name) rows.push({ name: name, gender: g === "F" ? "F" : "M", phone: phone });
       });
       if (!rows.length) { UI.toast("Nimic de adăugat.", "err"); return; }
-      Store.addParticipants(rows).then(function (r) { UI.closeSheet(); UI.toast(r.added + " adăugați.", "ok"); renderParticipants(document.getElementById("panel")); });
+      Store.addParticipants(rows).then(function (r) { UI.closeSheet(); UI.toast((r.added || 0) + " adăugați.", "ok"); renderParticipants(document.getElementById("panel")); });
     });
   }
 

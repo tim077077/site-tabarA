@@ -64,8 +64,34 @@ create policy anon_read_participants on public.camp_participants for select usin
 create policy anon_read_tents on public.camp_tents for select using (true);
 create policy anon_read_assignments on public.camp_assignments for select using (true);
 
--- Functions: see supabase migrations `camp_functions` for the full bodies
--- (get_public_settings, create_tent, join_tent, leave_tent, create_request,
---  and admin_* functions gated by a bcrypt-hashed PIN via camp_check_pin).
--- camp_check_pin is internal only:
+-- ===== identity + invitations (migrations identity_and_invites, authed_tents_and_invites) =====
+-- Phone-as-secret + per-user token (deny-all: no anon access, only via functions)
+create table public.camp_secrets (
+  participant_id uuid primary key references public.camp_participants(id) on delete cascade,
+  phone_norm text,
+  token uuid not null default gen_random_uuid()
+);
+alter table public.camp_secrets enable row level security;
+
+-- invitations (invitee accepts on their own device; nobody is force-added)
+create table public.camp_invites (
+  id uuid primary key default gen_random_uuid(),
+  tent_id uuid not null references public.camp_tents(id) on delete cascade,
+  invitee_id uuid not null references public.camp_participants(id) on delete cascade,
+  inviter_id uuid references public.camp_participants(id) on delete set null,
+  status text not null default 'pending',
+  created_at timestamptz not null default now()
+);
+alter table public.camp_invites enable row level security;
+create policy anon_read_invites on public.camp_invites for select using (true);
+
+-- Functions (see migrations for full bodies):
+--   verify_identity(id, phone) -> token   (the "login")
+--   create_tent / join_tent / leave_tent / invite_to_tent / respond_invite /
+--   get_my_invites / create_request  — ALL take (p_actor, p_token) and verify it
+--   via camp_auth() so only the real person can act.
+--   admin_* (incl. admin_set_gender / admin_set_phone) gated by bcrypt PIN.
+-- Internal helpers are not exposed to anon:
 revoke execute on function public.camp_check_pin(text) from anon, authenticated, public;
+-- revoke execute on function public.camp_auth(uuid, uuid) from anon, authenticated, public;
+-- revoke execute on function public.camp_norm_phone(text) from anon, authenticated, public;
