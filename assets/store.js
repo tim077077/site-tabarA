@@ -32,14 +32,14 @@
         var occ = (byTent[t.id] || []).map(function (id) { return { id: id, name: (pmap[id] || {}).name || "?" }; });
         var inv = (invByTent[t.id] || []).map(function (i) { return { inviteId: i.id, id: i.invitee_id, name: (pmap[i.invitee_id] || {}).name || "?", inviterName: (pmap[i.inviter_id] || {}).name || "?" }; });
         var filled = occ.length + inv.length;
-        return { id: t.id, name: t.name, gender: t.gender, capacity: t.capacity, createdBy: t.created_by,
+        return { id: t.id, number: t.number, name: t.name, gender: t.gender, capacity: t.capacity, createdBy: t.created_by,
           createdByName: (pmap[t.created_by] || {}).name || "?", createdAt: new Date(t.created_at).getTime(),
           occupants: occ, invited: inv, occupied: occ.length, reserved: inv.length, filled: filled, free: t.capacity - filled };
       }).sort(function (a, b) { return a.createdAt - b.createdAt; });
     }
     function fetchAll() {
       return Promise.all([
-        sb.from("camp_tents").select("id,name,gender,capacity,created_by,created_at"),
+        sb.from("camp_tents").select("id,number,name,gender,capacity,created_by,created_at"),
         sb.from("camp_assignments").select("participant_id,tent_id"),
         sb.from("camp_participants").select("id,name,gender"),
         sb.from("camp_invites").select("id,tent_id,invitee_id,inviter_id").eq("status", "pending")
@@ -131,8 +131,8 @@
       boys.forEach(function (n) { participants.push({ id: uid(), name: n, gender: "M", tentId: null }); });
       girls.forEach(function (n) { participants.push({ id: uid(), name: n, gender: "F", tentId: null }); });
       function bn(n) { return participants.find(function (p) { return p.name === n; }); }
-      var t1 = { id: uid(), name: null, gender: "M", capacity: 6, createdBy: bn("Andrei").id, createdAt: Date.now() - 6000 };
-      var t2 = { id: uid(), name: "Zânele", gender: "F", capacity: 4, createdBy: bn("Maria").id, createdAt: Date.now() - 3000 };
+      var t1 = { id: uid(), number: 1, name: null, gender: "M", capacity: 4, createdBy: bn("Andrei").id, createdAt: Date.now() - 6000 };
+      var t2 = { id: uid(), number: 2, name: "Zânele", gender: "F", capacity: 4, createdBy: bn("Maria").id, createdAt: Date.now() - 3000 };
       bn("Andrei").tentId = t1.id; bn("Mihai").tentId = t1.id; bn("Maria").tentId = t2.id; bn("Ioana").tentId = t2.id;
       return { settings: { eventName: "Tabăra Făgăraș", bookingOpen: true, pin: DEFAULT_PIN }, participants: participants, tents: [t1, t2], requests: [], invites: [] };
     }
@@ -144,7 +144,7 @@
       var occ = db.participants.filter(function (p) { return p.tentId === t.id; }).map(function (p) { return { id: p.id, name: p.name }; });
       var inv = db.invites.filter(function (i) { return i.tentId === t.id && i.status === "pending"; }).map(function (i) { return { inviteId: i.id, id: i.inviteeId, name: nameOf(i.inviteeId), inviterName: nameOf(i.inviterId) }; });
       var filled = occ.length + inv.length;
-      return { id: t.id, name: t.name, gender: t.gender, capacity: t.capacity, createdBy: t.createdBy, createdByName: nameOf(t.createdBy), createdAt: t.createdAt || 0, occupants: occ, invited: inv, occupied: occ.length, reserved: inv.length, filled: filled, free: t.capacity - filled }; }
+      return { id: t.id, number: t.number, name: t.name, gender: t.gender, capacity: t.capacity, createdBy: t.createdBy, createdByName: nameOf(t.createdBy), createdAt: t.createdAt || 0, occupants: occ, invited: inv, occupied: occ.length, reserved: inv.length, filled: filled, free: t.capacity - filled }; }
     function tentFilled(tid) { return db.participants.filter(function (p) { return p.tentId === tid; }).length + db.invites.filter(function (i) { return i.tentId === tid && i.status === "pending"; }).length; }
     function prune(tid) { if (!db.participants.some(function (p) { return p.tentId === tid; })) { db.tents = db.tents.filter(function (t) { return t.id !== tid; }); db.invites = db.invites.filter(function (i) { return i.tentId !== tid; }); } }
     function meId() { var s = readSession(); return s ? s.id : null; }
@@ -168,7 +168,8 @@
         if (capacity !== 3 && capacity !== 4) return delay({ ok: false, code: "bad_cap", message: "Corturile sunt doar de 3 sau 4 persoane." });
         var lim = capacity === 3 ? (db.settings.cap3Total || 6) : (db.settings.cap4Total || 24);
         if (db.tents.filter(function (t) { return t.capacity === capacity; }).length >= lim) return delay({ ok: false, code: "no_tents", message: "Nu mai sunt corturi de " + capacity + " libere." });
-        var t = { id: uid(), name: (name || "").trim() || null, gender: me.gender, capacity: capacity, createdBy: me.id, createdAt: Date.now() };
+        var maxNum = db.tents.reduce(function (m, x) { return Math.max(m, x.number || 0); }, 0);
+        var t = { id: uid(), number: maxNum + 1, name: (name || "").trim() || null, gender: me.gender, capacity: capacity, createdBy: me.id, createdAt: Date.now() };
         db.tents.push(t); me.tentId = t.id;
         db.invites.forEach(function (i) { if (i.inviteeId === me.id && i.status === "pending") i.status = "declined"; });
         var slots = capacity - 1;

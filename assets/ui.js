@@ -14,7 +14,10 @@
       return g === "F" ? '<span class="badge badge-girls">Fete</span>'
                        : '<span class="badge badge-boys">Băieți</span>';
     },
-    tentName: function (t) { return t.name || ("Cortul lui " + (t.createdByName || "?")); },
+    tentName: function (t) {
+      if (t.number) return "Cortul " + t.number + (t.name ? " · " + t.name : "");
+      return t.name || ("Cortul lui " + (t.createdByName || "?"));
+    },
     tentEmoji: function (t) {
       var h = 0, s = t.id || "";
       for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;

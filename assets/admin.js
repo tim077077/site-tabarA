@@ -61,8 +61,31 @@
   }
 
   // ---- Overview ---------------------------------------------------- //
+  function downloadRoster() {
+    Promise.all([Store.getTents(), Store.getParticipants()]).then(function (res) {
+      var tents = res[0].slice().sort(function (a, b) { return (a.number || 0) - (b.number || 0); });
+      var people = res[1];
+      var memberIds = {}, invitedIds = {};
+      tents.forEach(function (t) { t.occupants.forEach(function (o) { memberIds[o.id] = 1; }); (t.invited || []).forEach(function (iv) { invitedIds[iv.id] = 1; }); });
+      var rows = [["Nr cort", "Cort", "Gen", "Capacitate", "Rol", "Nume", "Făcut de"]];
+      tents.forEach(function (t) {
+        var nm = UI.tentName(t), g = UI.genderLabel(t.gender);
+        t.occupants.forEach(function (o) { rows.push([t.number || "", nm, g, t.capacity, "Membru", o.name, t.createdByName]); });
+        (t.invited || []).forEach(function (iv) { rows.push([t.number || "", nm, g, t.capacity, "Invitat (în așteptare)", iv.name, t.createdByName]); });
+      });
+      people.filter(function (pp) { return !memberIds[pp.id] && !invitedIds[pp.id]; }).forEach(function (pp) { rows.push(["", "— nerepartizat —", UI.genderLabel(pp.gender), "", "", pp.name, ""]); });
+      var csv = "﻿" + rows.map(function (r) { return r.map(function (f) { return '"' + String(f == null ? "" : f).replace(/"/g, '""') + '"'; }).join(","); }).join("\r\n");
+      var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      var url = URL.createObjectURL(blob), a = document.createElement("a");
+      a.href = url; a.download = "corturi-fagaras-" + new Date().toISOString().slice(0, 10) + ".csv";
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      UI.toast("Lista descărcată (CSV).", "ok");
+    });
+  }
+
   function renderOverview(p) {
-    p.innerHTML = '<div id="ov"></div>';
+    p.innerHTML = '<button class="btn btn-glass btn-block" id="dl">⬇️ Descarcă lista (CSV)</button><div id="ov" class="mt"></div>';
+    document.getElementById("dl").addEventListener("click", downloadRoster);
     Promise.all([Store.getTents(), Store.getParticipants()]).then(function (res) {
       var tents = res[0], people = res[1];
       var unassigned = people.filter(function (x) { return !x.tentId; });
