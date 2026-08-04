@@ -83,8 +83,67 @@
     });
   }
 
+  function openPrintableRoster() {
+    Promise.all([Store.getTents(), Store.getParticipants(), Store.getSettings()]).then(function (res) {
+      var tents = res[0].slice().sort(function (a, b) { return (a.number || 0) - (b.number || 0); });
+      var people = res[1], ev = (res[2].eventName || "Tabără");
+      var memberIds = {}, invitedIds = {};
+      tents.forEach(function (t) { t.occupants.forEach(function (o) { memberIds[o.id] = 1; }); (t.invited || []).forEach(function (iv) { invitedIds[iv.id] = 1; }); });
+      var assigned = Object.keys(memberIds).length;
+      var esc = UI.esc;
+
+      function tentBlock(t) {
+        var li = t.occupants.map(function (o) { return "<li>" + esc(o.name) + "</li>"; }).join("");
+        var inv = (t.invited || []).length ? '<div class="inv">În așteptare: ' + t.invited.map(function (x) { return esc(x.name); }).join(", ") + '</div>' : "";
+        var freeN = t.capacity - t.filled;
+        var freeTxt = freeN > 0 ? '<span class="free">' + freeN + ' ' + (freeN === 1 ? "loc liber" : "locuri libere") + '</span>' : '<span class="full">complet</span>';
+        return '<div class="cort">' +
+          '<div class="cort-h"><span class="num">Cortul ' + (t.number || "?") + '</span>' + (t.name ? ' <span class="nick">„' + esc(t.name) + '"</span>' : "") +
+          '<span class="cap">' + t.filled + '/' + t.capacity + ' · ' + freeTxt + '</span></div>' +
+          '<div class="by">făcut de ' + esc(t.createdByName) + '</div>' +
+          (li ? '<ol>' + li + '</ol>' : '<div class="empty">— gol —</div>') + inv + '</div>';
+      }
+      function section(g, label) {
+        var group = tents.filter(function (t) { return t.gender === g; });
+        var html = '<h2>' + label + ' <span class="cnt">' + group.length + ' corturi</span></h2>';
+        html += group.length ? '<div class="grid">' + group.map(tentBlock).join("") + '</div>' : '<p class="muted">— niciun cort încă —</p>';
+        var un = people.filter(function (pp) { return pp.gender === g && !memberIds[pp.id] && !invitedIds[pp.id]; });
+        html += '<div class="unassigned"><strong>Nerepartizați ' + label.toLowerCase() + ' (' + un.length + '):</strong> ' + (un.length ? un.map(function (pp) { return esc(pp.name); }).join(", ") : "—") + '</div>';
+        return html;
+      }
+
+      var now = new Date().toLocaleString("ro-RO");
+      var html = '<!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Corturi · ' + esc(ev) + '</title><style>' +
+        '*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c2530;background:#f4f6f8;margin:0;padding:28px 18px 60px;line-height:1.45}' +
+        '.wrap{max-width:820px;margin:0 auto}h1{font-size:1.7rem;margin:0 0 2px;color:#20303f}.sub{color:#5f7183;margin-bottom:6px}' +
+        '.stats{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 24px}.stat{background:#fff;border:1px solid #e2e8ee;border-radius:12px;padding:10px 16px;text-align:center;flex:1;min-width:90px}.stat b{display:block;font-size:1.4rem;color:#2f6f9c}.stat span{font-size:.75rem;color:#6a7c8c}' +
+        'h2{font-size:1.15rem;margin:26px 0 12px;padding-bottom:6px;border-bottom:2px solid #cfe0ec;color:#20303f}h2 .cnt{font-size:.8rem;color:#8496a6;font-weight:400}' +
+        '.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.grid{grid-template-columns:1fr}}' +
+        '.cort{background:#fff;border:1px solid #e2e8ee;border-radius:14px;padding:12px 14px;break-inside:avoid}' +
+        '.cort-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.num{font-weight:800;font-size:1.05rem;color:#20303f}.nick{color:#5f7183;font-size:.9rem}.cap{margin-left:auto;font-size:.78rem;color:#6a7c8c}' +
+        '.free{color:#2f8f5f;font-weight:600}.full{color:#b06a4a;font-weight:600}.by{font-size:.76rem;color:#8496a6;margin:2px 0 8px}' +
+        'ol{margin:0;padding-left:22px}ol li{margin:2px 0}.inv{margin-top:8px;font-size:.82rem;color:#8a6d3b;background:#fdf3e0;border:1px solid #f0e0c0;border-radius:8px;padding:6px 9px}.empty{color:#a7b3bf;font-style:italic;font-size:.85rem}' +
+        '.unassigned{margin-top:12px;font-size:.85rem;color:#5f7183;background:#fff;border:1px solid #e2e8ee;border-radius:10px;padding:10px 12px}' +
+        '.toolbar{position:sticky;top:0;background:#f4f6f8;padding:6px 0 14px;display:flex;gap:8px}.btn{border:none;border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer;font-size:.95rem}.btn.p{background:#2f6f9c;color:#fff}.btn.g{background:#e6edf2;color:#33465a}' +
+        '@media print{body{background:#fff;padding:0}.toolbar{display:none}.stat,.cort,.unassigned{border-color:#ccc}}' +
+        '</style></head><body><div class="wrap">' +
+        '<div class="toolbar"><button class="btn p" onclick="window.print()">🖨️ Printează / Salvează PDF</button><button class="btn g" onclick="window.close()">Închide</button></div>' +
+        '<h1>⛺ Corturi — ' + esc(ev) + '</h1><div class="sub">Generat: ' + now + '</div>' +
+        '<div class="stats"><div class="stat"><b>' + people.length + '</b><span>participanți</span></div><div class="stat"><b>' + tents.length + '</b><span>corturi</span></div><div class="stat"><b>' + assigned + '</b><span>repartizați</span></div><div class="stat"><b>' + (people.length - assigned) + '</b><span>nerepartizați</span></div></div>' +
+        section("M", "Băieți") + section("F", "Fete") +
+        '</div></body></html>';
+
+      var w = window.open("", "_blank");
+      if (!w) { UI.toast("Permite pop-up-urile ca să deschizi lista.", "err"); return; }
+      w.document.write(html); w.document.close();
+    });
+  }
+
   function renderOverview(p) {
-    p.innerHTML = '<button class="btn btn-glass btn-block" id="dl">⬇️ Descarcă lista (CSV)</button><div id="ov" class="mt"></div>';
+    p.innerHTML = '<button class="btn btn-primary btn-block" id="print">📋 Lista corturilor (printează / PDF)</button>' +
+      '<button class="btn btn-ghost btn-block mt" id="dl" style="font-size:.84rem;color:var(--text-soft)">sau descarcă CSV brut</button>' +
+      '<div id="ov" class="mt"></div>';
+    document.getElementById("print").addEventListener("click", openPrintableRoster);
     document.getElementById("dl").addEventListener("click", downloadRoster);
     Promise.all([Store.getTents(), Store.getParticipants()]).then(function (res) {
       var tents = res[0], people = res[1];
