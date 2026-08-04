@@ -95,28 +95,51 @@
 
   function adminTentCard(t) {
     var pips = "";
-    for (var i = 0; i < t.capacity; i++) pips += '<span class="pip' + (i < t.occupied ? " on" : "") + '"></span>';
+    for (var i = 0; i < t.capacity; i++) { var c = i < t.occupied ? " on" : (i < t.filled ? " res" : ""); pips += '<span class="pip' + c + '"></span>'; }
+    var full = t.filled >= t.capacity;
     var card = UI.el(
       '<div class="cort" style="cursor:default">' +
         '<div class="row"><div class="cort-emoji">' + UI.tentEmoji(t) + '</div>' +
           '<div class="grow"><div class="cort-name">' + UI.esc(UI.tentName(t)) + '</div>' +
-          '<div class="cort-sub">' + t.occupied + '/' + t.capacity + ' · ' + UI.esc(t.createdByName) + '</div></div></div>' +
+          '<div class="cort-sub">' + t.filled + '/' + t.capacity + ' ocupate · ' + UI.esc(t.createdByName) + '</div></div></div>' +
         '<div class="meter">' + pips + '</div>' +
         '<div class="person-list"></div>' +
+        (full ? "" : '<button class="btn btn-glass btn-sm add">＋ Adaugă în cort</button>') +
       '</div>'
     );
     var list = card.querySelector(".person-list");
-    if (!t.occupants.length) list.innerHTML = '<span class="none muted" style="font-size:.84rem">gol</span>';
+    if (!t.occupants.length && !(t.invited || []).length) list.innerHTML = '<span class="none muted" style="font-size:.84rem">gol</span>';
     t.occupants.forEach(function (o) {
       var row = UI.el('<div class="person" style="cursor:default;padding:8px 11px">' + UI.avatar(o.name, "sm") +
         '<span class="who"><span class="name">' + UI.esc(o.name) + '</span></span>' +
         '<button class="btn btn-danger btn-sm" title="Scoate">✕</button></div>');
-      row.querySelector("button").addEventListener("click", function () {
-        Store.forceAssign(o.id, null).then(function () { renderOverview(document.getElementById("panel")); });
-      });
+      row.querySelector("button").addEventListener("click", function () { Store.forceAssign(o.id, null).then(function () { renderOverview(document.getElementById("panel")); }); });
       list.appendChild(row);
     });
+    (t.invited || []).forEach(function (iv) {
+      var row = UI.el('<div class="person" style="cursor:default;padding:8px 11px">' + UI.avatar(iv.name, "sm pending") +
+        '<span class="who"><span class="name">' + UI.esc(iv.name) + '</span><span class="meta">invitat · în așteptare</span></span>' +
+        '<button class="btn btn-glass btn-sm" title="Anulează invitația">✕</button></div>');
+      row.querySelector("button").addEventListener("click", function () { Store.adminCancelInvite(iv.inviteId).then(function () { renderOverview(document.getElementById("panel")); }); });
+      list.appendChild(row);
+    });
+    var addBtn = card.querySelector(".add");
+    if (addBtn) addBtn.addEventListener("click", function () { openAddToTent(t); });
     return card;
+  }
+
+  function openAddToTent(t) {
+    Store.getParticipants().then(function (all) {
+      var free = all.filter(function (p) { return p.gender === t.gender && !p.tentId; });
+      var rows = free.length ? free.map(function (p) { return '<button class="person add-p" data-id="' + p.id + '">' + UI.avatar(p.name, "sm") + '<span class="who"><span class="name">' + UI.esc(p.name) + '</span></span><span class="chev">＋</span></button>'; }).join("") : '<div class="muted" style="padding:6px 2px">Nimeni liber de genul acesta.</div>';
+      UI.openSheet('<h2>Adaugă în „' + UI.esc(UI.tentName(t)) + '"</h2><p class="muted mt" style="font-size:.88rem">Alege pe cine adaugi (îl repartizezi direct, fără invitație).</p><div class="search mt"><input class="input" id="aq" placeholder="Caută…" /></div><div class="person-list mt" id="alist">' + rows + '</div><button class="btn btn-ghost btn-block mt" id="acancel">Închide</button>');
+      document.getElementById("acancel").addEventListener("click", UI.closeSheet);
+      var q = document.getElementById("aq");
+      q.addEventListener("input", function () { var term = q.value.trim().toLowerCase(); Array.prototype.forEach.call(document.querySelectorAll("#alist .add-p"), function (b) { b.style.display = b.querySelector(".name").textContent.toLowerCase().indexOf(term) >= 0 ? "" : "none"; }); });
+      Array.prototype.forEach.call(document.querySelectorAll("#alist .add-p"), function (b) {
+        b.addEventListener("click", function () { Store.forceAssign(b.dataset.id, t.id).then(function () { UI.closeSheet(); UI.toast("Adăugat în cort.", "ok"); renderOverview(document.getElementById("panel")); }); });
+      });
+    });
   }
 
   // ---- Corturi (list + delete) ------------------------------------ //

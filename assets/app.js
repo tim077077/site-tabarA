@@ -11,7 +11,9 @@
   var app = document.getElementById("app");
   var landing = document.getElementById("landing");
   var state = { bookingOpen: true };
+  var pollTimer = null;
   function me() { return Store.session(); }
+  function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
 
   function enterApp() {
     landing.style.transition = "opacity .5s, transform .5s";
@@ -23,7 +25,7 @@
   }
 
   // ---- Step 1: who are you? --------------------------------------- //
-  function renderName() {
+  function renderName() { stopPoll();
     view.innerHTML =
       '<div class="screen-head"><span class="eyebrow-sm">Pasul 1</span><h1>Cine ești?</h1>' +
       '<p>Caută-ți numele în listă.</p></div>' +
@@ -46,7 +48,7 @@
   }
 
   // ---- Step 2: verify identity by phone --------------------------- //
-  function renderVerify(p) {
+  function renderVerify(p) { stopPoll();
     view.innerHTML =
       '<div class="screen-head"><button class="back" id="back">‹ Nu sunt eu</button>' +
       '<span class="eyebrow-sm">Pasul 2 · confirmare</span><h1>Ești ' + UI.esc(p.name.split(" ")[0]) + '?</h1>' +
@@ -83,8 +85,10 @@
       '<div id="invites"></div><div id="mine-slot"></div>' +
       '<div class="section-title"><h2>Corturi ' + UI.genderLabel(s.gender).toLowerCase() + '</h2><span class="hint">live</span></div>' +
       '<div class="grid" id="corts"></div>';
-    document.getElementById("back").addEventListener("click", function () { Store.logout().then(renderName); });
+    document.getElementById("back").addEventListener("click", function () { stopPoll(); Store.logout().then(renderName); });
     drawInvites(); drawCorts();
+    stopPoll();
+    pollTimer = setInterval(function () { if (!document.querySelector(".overlay") && document.getElementById("corts")) { drawInvites(); drawCorts(); } }, 12000);
   }
 
   function drawInvites() {
@@ -116,8 +120,9 @@
   }
 
   function drawCorts() {
-    var s = me();
+    var s = me(); if (!s) return;
     Promise.all([Store.getTents(s.gender), Store.getSettings()]).then(function (res) {
+      if (!document.getElementById("corts")) return;
       var tents = res[0]; state.bookingOpen = res[1].bookingOpen;
       var mine = tents.find(function (t) { return t.occupants.some(function (o) { return o.id === s.id; }); });
       var slot = document.getElementById("mine-slot"), box = document.getElementById("corts");
@@ -138,8 +143,9 @@
 
   function cortCard(t, isMine) {
     var full = t.free <= 0 && !isMine, pips = "";
-    for (var i = 0; i < t.capacity; i++) pips += '<span class="pip' + (i < t.occupied ? " on" : "") + '"></span>';
-    var occ = t.occupants.length ? '<div class="avatar-stack">' + t.occupants.slice(0, 7).map(function (o) { return UI.avatar(o.name, "sm"); }).join("") + '</div>' : '<span class="none">Gol — fii primul!</span>';
+    for (var i = 0; i < t.capacity; i++) { var cls = i < t.occupied ? " on" : (i < t.filled ? " res" : ""); pips += '<span class="pip' + cls + '"></span>'; }
+    var avs = t.occupants.map(function (o) { return UI.avatar(o.name, "sm"); }).concat((t.invited || []).map(function (iv) { return UI.avatar(iv.name, "sm pending"); }));
+    var occ = avs.length ? '<div class="avatar-stack">' + avs.slice(0, 8).join("") + '</div>' + (t.reserved ? '<span class="pend-tag">' + t.reserved + ' invitat' + (t.reserved === 1 ? "" : "e") + '</span>' : "") : '<span class="none">Gol — fii primul!</span>';
     var right = isMine ? '<span class="badge badge-you">Cortul tău</span>' : full ? '<span class="badge badge-full">Plin</span>' : '<span class="free">' + t.free + ' ' + (t.free === 1 ? "loc" : "locuri") + '</span>';
     var card = UI.el('<div class="cort ' + (full ? "full " : "") + (isMine ? "mine" : "") + '"><div class="row"><div class="cort-emoji">' + UI.tentEmoji(t) + '</div><div class="grow"><div class="cort-name">' + UI.esc(UI.tentName(t)) + '</div><div class="cort-sub">' + t.capacity + ' locuri · făcut de ' + UI.esc(t.createdByName) + '</div></div></div><div class="meter">' + pips + '</div><div class="capline"><span class="occupants">' + occ + '</span>' + right + '</div></div>');
     card.addEventListener("click", function () { openTentSheet(t.id); });
@@ -154,6 +160,7 @@
       var iAmHere = t.occupants.some(function (o) { return o.id === s.id; });
       var full = t.free <= 0;
       var members = t.occupants.map(function (o) { return '<div class="person" style="cursor:default">' + UI.avatar(o.name) + '<span class="who"><span class="name">' + UI.esc(o.name) + (o.id === s.id ? ' <span class="badge badge-you">tu</span>' : "") + '</span></span></div>'; }).join("");
+      var invitedSection = (t.invited || []).length ? '<div class="section-title" style="margin:14px 2px 8px"><h2 style="font-size:.95rem">Invitați · în așteptare</h2><span class="hint">' + t.reserved + '</span></div><div class="person-list" id="invlist"></div>' : "";
       var action;
       if (iAmHere) action = '<div id="invzone"></div><button class="btn btn-danger btn-block mt" id="leave">Ieși din cort</button>';
       else if (full) action = '<div class="notice warn">Cortul e plin.</div><button class="btn btn-glass btn-block mt" id="req">Trimite o cerere organizatorului</button>';
@@ -161,9 +168,16 @@
       else action = '<button class="btn btn-primary btn-block" id="join">Alătură-te cortului</button>';
 
       UI.openSheet(
-        '<div class="row" style="gap:12px;margin-bottom:4px"><div class="cort-emoji">' + UI.tentEmoji(t) + '</div><div class="grow"><h2 style="font-size:1.3rem">' + UI.esc(UI.tentName(t)) + '</h2><div class="muted" style="font-size:.85rem">' + t.occupied + '/' + t.capacity + ' · ' + UI.genderLabel(t.gender) + '</div></div></div>' +
-        '<div class="section-title" style="margin:14px 2px 10px"><h2 style="font-size:.95rem">În cort</h2></div><div class="person-list">' + members + '</div><div class="mt-lg">' + action + '</div>'
+        '<div class="row" style="gap:12px;margin-bottom:4px"><div class="cort-emoji">' + UI.tentEmoji(t) + '</div><div class="grow"><h2 style="font-size:1.3rem">' + UI.esc(UI.tentName(t)) + '</h2><div class="muted" style="font-size:.85rem">' + t.filled + '/' + t.capacity + ' ocupate · ' + UI.genderLabel(t.gender) + '</div></div></div>' +
+        '<div class="section-title" style="margin:14px 2px 10px"><h2 style="font-size:.95rem">În cort</h2><span class="hint">' + t.occupied + '</span></div><div class="person-list">' + members + '</div>' +
+        invitedSection + '<div class="mt-lg">' + action + '</div>'
       );
+      var invBox = document.getElementById("invlist");
+      if (invBox) (t.invited || []).forEach(function (iv) {
+        var row = UI.el('<div class="person" style="cursor:default">' + UI.avatar(iv.name, "pending") + '<span class="who"><span class="name">' + UI.esc(iv.name) + '</span><span class="meta">invitat de ' + UI.esc(iv.inviterName) + ' · așteaptă</span></span>' + (iAmHere ? '<button class="btn btn-glass btn-sm" style="padding:6px 10px">Anulează</button>' : "") + '</div>');
+        if (iAmHere) row.querySelector("button").addEventListener("click", function () { Store.cancelInvite(iv.inviteId).then(function () { UI.toast("Invitație anulată.", "info"); openTentSheet(tentId); drawCorts(); }); });
+        invBox.appendChild(row);
+      });
       if (iAmHere) {
         document.getElementById("leave").addEventListener("click", function () { Store.leave().then(function () { UI.closeSheet(); UI.toast("Ai ieșit din cort.", "info"); renderCorts(); }); });
         if (t.free > 0) buildInviteZone(t);
@@ -187,9 +201,13 @@
         var send = UI.el('<button class="btn btn-primary btn-block mt" id="sendinv">Trimite invitațiile</button>');
         zone.appendChild(send);
         send.addEventListener("click", function () {
-          var ids = picker.selected(); if (!ids.length) { UI.closeSheet(); return; }
-          Promise.all(ids.map(function (id) { return Store.inviteToTent(t.id, id); })).then(function () {
-            UI.closeSheet(); UI.toast(ids.length + (ids.length === 1 ? " invitație trimisă" : " invitații trimise") + " ✉️", "ok"); drawCorts();
+          var ids = picker.selected(); if (!ids.length) { openTentSheet(t.id); return; }
+          Promise.all(ids.map(function (id) { return Store.inviteToTent(t.id, id); })).then(function (results) {
+            var okc = results.filter(function (r) { return r && r.ok; }).length;
+            var failMsg = (results.find(function (r) { return r && !r.ok; }) || {}).message;
+            if (okc) UI.toast(okc + (okc === 1 ? " invitație trimisă — locul e rezervat" : " invitații trimise — locurile sunt rezervate") + " ✉️", "ok");
+            else if (failMsg) UI.toast(failMsg, "err");
+            openTentSheet(t.id); drawCorts();
           });
         });
       });
@@ -253,7 +271,7 @@
   }
 
   // ---- Confirmation ----------------------------------------------- //
-  function renderDone(t, invitedCount) {
+  function renderDone(t, invitedCount) { stopPoll();
     var s = me();
     view.innerHTML =
       '<div class="fade-in"><div class="confirm-hero"><div class="confirm-mark">✓</div><h1>Ești în cort!</h1><p class="muted mt">' + UI.esc(UI.tentName(t)) + '</p></div>' +

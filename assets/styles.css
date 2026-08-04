@@ -278,7 +278,10 @@ a { color: var(--ice); text-decoration: none; }
 .meter { display: flex; gap: 5px; }
 .meter .pip { flex: 1; height: 8px; border-radius: var(--r-pill); background: rgba(210,224,236,.08); overflow: hidden; }
 .meter .pip.on { background: var(--grad); box-shadow: 0 0 10px rgba(111,159,188,.35); }
+.meter .pip.res { background: repeating-linear-gradient(45deg, rgba(111,159,188,.5), rgba(111,159,188,.5) 3px, rgba(111,159,188,.22) 3px, rgba(111,159,188,.22) 6px); }
 .meter .pip.you { background: linear-gradient(135deg, var(--glacier), var(--ice)); }
+.avatar.pending { opacity: .5; filter: grayscale(.35); }
+.pend-tag { font-size: .7rem; font-weight: 600; color: var(--text-dim); }
 .capline { display: flex; align-items: center; justify-content: space-between; font-size: .82rem; }
 .capline .free { font-weight: 700; color: var(--ice); }
 .capline .free.none { color: var(--text-dim); }
