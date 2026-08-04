@@ -50,7 +50,7 @@
       init: function () { return Promise.resolve(); },
       session: readSession, logout: function () { clearSession(); return delay({ ok: true }); },
 
-      getSettings: function () { return rpc("get_public_settings", {}).then(function (d) { d = d || {}; return { eventName: d.event_name || "Tabără", bookingOpen: d.booking_open !== false }; }); },
+      getSettings: function () { return rpc("get_public_settings", {}).then(function (d) { d = d || {}; return { eventName: d.event_name || "Tabără", bookingOpen: d.booking_open !== false, cap3Total: d.cap3_total || 6, cap4Total: d.cap4_total || 24 }; }); },
       getParticipants: function () {
         return Promise.all([sb.from("camp_participants").select("id,name,gender"), sb.from("camp_assignments").select("participant_id,tent_id")]).then(function (r) {
           var amap = {}; (r[1].data || []).forEach(function (a) { amap[a.participant_id] = a.tent_id; });
@@ -142,7 +142,7 @@
       backend: "demo",
       init: function () { load(); return Promise.resolve(); },
       session: readSession, logout: function () { clearSession(); return delay({ ok: true }); },
-      getSettings: function () { load(); return delay({ eventName: db.settings.eventName, bookingOpen: db.settings.bookingOpen }); },
+      getSettings: function () { load(); return delay({ eventName: db.settings.eventName, bookingOpen: db.settings.bookingOpen, cap3Total: db.settings.cap3Total || 6, cap4Total: db.settings.cap4Total || 24 }); },
       getParticipants: function () { load(); return delay(clone(db.participants).sort(function (a, b) { return a.name.localeCompare(b.name, "ro"); })); },
       getParticipant: function (id) { load(); var p = P(id); return delay(p ? clone(p) : null); },
       getTents: function (gender) { load(); return delay(db.tents.filter(function (t) { return !gender || t.gender === gender; }).map(tentStatus).sort(function (a, b) { return a.createdAt - b.createdAt; })); },
@@ -153,7 +153,10 @@
         load(); if (!db.settings.bookingOpen) return delay({ ok: false, code: "closed", message: "Înscrierile sunt închise momentan." });
         var me = P(meId()); if (!me) return delay({ ok: false, code: "auth" });
         if (me.tentId) return delay({ ok: false, code: "taken", message: "Ești deja într-un cort." });
-        capacity = Math.max(1, Math.min(12, parseInt(capacity, 10) || 1));
+        capacity = parseInt(capacity, 10);
+        if (capacity !== 3 && capacity !== 4) return delay({ ok: false, code: "bad_cap", message: "Corturile sunt doar de 3 sau 4 persoane." });
+        var lim = capacity === 3 ? (db.settings.cap3Total || 6) : (db.settings.cap4Total || 24);
+        if (db.tents.filter(function (t) { return t.capacity === capacity; }).length >= lim) return delay({ ok: false, code: "no_tents", message: "Nu mai sunt corturi de " + capacity + " libere." });
         var t = { id: uid(), name: (name || "").trim() || null, gender: me.gender, capacity: capacity, createdBy: me.id, createdAt: Date.now() };
         db.tents.push(t); me.tentId = t.id;
         (inviteIds || []).forEach(function (iid) { var q = P(iid); if (q && q.id !== me.id && q.gender === me.gender && !q.tentId && !db.invites.some(function (i) { return i.tentId === t.id && i.inviteeId === iid && i.status === "pending"; })) db.invites.push({ id: uid(), tentId: t.id, inviteeId: iid, inviterId: me.id, status: "pending" }); });

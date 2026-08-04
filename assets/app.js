@@ -198,20 +198,32 @@
 
   // ---- Create cort ------------------------------------------------ //
   function openCreateSheet() {
-    Store.getParticipants().then(function (all) {
-      var caps = [2, 3, 4, 5, 6, 7, 8];
-      var chips = caps.map(function (n) { return '<button class="cap-opt' + (n === 4 ? " active" : "") + '" data-n="' + n + '"><span class="n">' + n + '</span><span class="l">pers.</span></button>'; }).join("");
+    Promise.all([Store.getParticipants(), Store.getSettings(), Store.getTents()]).then(function (res) {
+      var all = res[0], set = res[1], tents = res[2];
+      var used = { 3: 0, 4: 0 };
+      tents.forEach(function (t) { if (t.capacity === 3) used[3]++; else if (t.capacity === 4) used[4]++; });
+      var rem = { 3: Math.max(0, (set.cap3Total || 6) - used[3]), 4: Math.max(0, (set.cap4Total || 24) - used[4]) };
+      var opts = [4, 3]; // show 4 first
+      var chips = opts.map(function (n) {
+        var out = rem[n] <= 0;
+        return '<button class="cap-opt' + (out ? " full" : "") + '" data-n="' + n + '"' + (out ? " disabled" : "") + ' style="' + (out ? "opacity:.45;cursor:not-allowed" : "") + '">' +
+          '<span class="n">' + n + '</span><span class="l">pers · ' + (out ? "epuizat" : rem[n] + " libere") + '</span></button>';
+      }).join("");
+      var anyLeft = rem[3] > 0 || rem[4] > 0;
+
       UI.openSheet(
-        '<h2>Creează un cort</h2><p class="muted mt" style="font-size:.9rem">Alege câte locuri are. Pe cei aleși îi <strong>inviți</strong> — ei acceptă din contul lor.</p>' +
-        '<div class="field mt-lg"><label>Câte locuri?</label><div class="cap-grid" id="caps">' + chips + '</div></div>' +
+        '<h2>Creează un cort</h2><p class="muted mt" style="font-size:.9rem">Alege mărimea. Pe cei aleși îi <strong>inviți</strong> — ei acceptă din contul lor.</p>' +
+        (anyLeft ? '' : '<div class="notice warn mt">Nu mai sunt corturi de creat. Alătură-te unuia existent sau așteaptă o invitație.</div>') +
+        '<div class="field mt-lg"><label>Cort de câte persoane?</label><div class="cap-grid" style="grid-template-columns:1fr 1fr" id="caps">' + chips + '</div></div>' +
         '<div class="field"><label>Nume cort (opțional)</label><input class="input" id="cname" maxlength="28" placeholder="" /></div>' +
-        '<div id="bring"></div><button class="btn btn-primary btn-block mt" id="create">Creează cortul</button><button class="btn btn-ghost btn-block mt" id="cancel">Anulează</button>'
+        '<div id="bring"></div><button class="btn btn-primary btn-block mt" id="create"' + (anyLeft ? "" : " disabled") + '>Creează cortul</button><button class="btn btn-ghost btn-block mt" id="cancel">Anulează</button>'
       );
-      var capacity = 4;
+      var capacity = rem[4] > 0 ? 4 : (rem[3] > 0 ? 3 : 4);
       var caEls = Array.prototype.slice.call(document.querySelectorAll(".cap-opt"));
+      caEls.forEach(function (b) { if (parseInt(b.dataset.n, 10) === capacity && !b.disabled) b.classList.add("active"); });
       var picker = buildPeoplePicker(all, me(), capacity - 1, "Invită colegi (opțional)");
       document.getElementById("bring").appendChild(picker.el);
-      caEls.forEach(function (b) { b.addEventListener("click", function () { caEls.forEach(function (x) { x.classList.remove("active"); }); b.classList.add("active"); capacity = parseInt(b.dataset.n, 10); picker.setMax(capacity - 1); }); });
+      caEls.forEach(function (b) { b.addEventListener("click", function () { if (b.disabled) return; caEls.forEach(function (x) { x.classList.remove("active"); }); b.classList.add("active"); capacity = parseInt(b.dataset.n, 10); picker.setMax(capacity - 1); }); });
       document.getElementById("cancel").addEventListener("click", UI.closeSheet);
       document.getElementById("create").addEventListener("click", function () {
         Store.createTent(capacity, document.getElementById("cname").value, picker.selected()).then(function (r) {
