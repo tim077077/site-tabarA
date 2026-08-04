@@ -29,6 +29,7 @@ create table public.camp_tents (
   gender char(1) not null check (gender in ('M','F')),
   capacity int not null check (capacity between 1 and 12),
   created_by uuid references public.camp_participants(id) on delete set null,
+  leader_id uuid references public.camp_participants(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -73,12 +74,13 @@ create table public.camp_secrets (
 );
 alter table public.camp_secrets enable row level security;
 
--- invitations (invitee accepts on their own device; nobody is force-added)
+-- invitations (invitee accepts) + join requests (leader accepts)
 create table public.camp_invites (
   id uuid primary key default gen_random_uuid(),
   tent_id uuid not null references public.camp_tents(id) on delete cascade,
   invitee_id uuid not null references public.camp_participants(id) on delete cascade,
   inviter_id uuid references public.camp_participants(id) on delete set null,
+  kind text not null default 'invite' check (kind in ('invite', 'join_request')),
   status text not null default 'pending',
   created_at timestamptz not null default now()
 );
@@ -87,9 +89,10 @@ create policy anon_read_invites on public.camp_invites for select using (true);
 
 -- Functions (see migrations for full bodies):
 --   verify_identity(id, phone) -> token   (the "login")
---   create_tent / join_tent / leave_tent / invite_to_tent / respond_invite /
---   get_my_invites / create_request  — ALL take (p_actor, p_token) and verify it
---   via camp_auth() so only the real person can act.
+--   create_tent / join_tent (creates join_request) / leave_tent /
+--   invite_to_tent (leader only) / respond_invite / cancel_invite /
+--   remove_from_tent (leader kick) / get_my_invites / create_request
+--   — ALL take (p_actor, p_token) and verify via camp_auth()
 --   admin_* (incl. admin_set_gender / admin_set_phone) gated by bcrypt PIN.
 -- Internal helpers are not exposed to anon:
 revoke execute on function public.camp_check_pin(text) from anon, authenticated, public;
