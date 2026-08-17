@@ -16,9 +16,21 @@
   function evById(id){ return D.events.find(function(e){return e.id===id;}); }
   function dparts(iso){ var d=new Date(iso); var m=["IAN","FEB","MAR","APR","MAI","IUN","IUL","AUG","SEP","OCT","NOV","DEC"]; return {d:d.getDate(), m:m[d.getMonth()]}; }
 
-  // ---- router ----------------------------------------------------- //
+  // ---- router (hash-based: real URL per page + Android back button) - //
   var state = { route: "home", param: null };
-  function navigate(route, param){ state.route=route; state.param=param; window.scrollTo(0,0); render(); }
+  function parseHash(){
+    var h = (location.hash || "").replace(/^#\/?/, "");
+    var parts = h.split("/");
+    if (parts[0] === "event" && parts[1]) return { route: "event", param: decodeURIComponent(parts[1]) };
+    var known = ["home","events","gallery","profile"];
+    return { route: known.indexOf(parts[0]) >= 0 ? parts[0] : "home", param: null };
+  }
+  function navigate(route, param){
+    var h = "#" + route + (param ? ("/" + encodeURIComponent(param)) : "");
+    if (location.hash === h) { var s = parseHash(); state.route = s.route; state.param = s.param; window.scrollTo(0,0); render(); }
+    else location.hash = h; // triggers hashchange -> render
+  }
+  window.addEventListener("hashchange", function(){ var s = parseHash(); state.route = s.route; state.param = s.param; window.scrollTo(0,0); render(); });
   tabbar.querySelectorAll("a").forEach(function(a){ a.addEventListener("click", function(){ navigate(a.dataset.route); }); });
   function setTab(){ tabbar.querySelectorAll("a").forEach(function(a){ a.classList.toggle("on", a.dataset.route===state.route || (state.route==="event" && a.dataset.route==="events")); }); }
 
@@ -188,11 +200,48 @@
       '<div class="rule"></div>'+
       '<div class="section-h"><div><div class="eyebrow">Cine suntem</div><h2>Cei 5 R</h2></div></div>'+
       '<div class="info-list">'+D.identity.fives.map(function(f){return '<div class="row"><div class="ic">'+f[1]+'</div><div><div class="v" style="font-family:var(--serif);font-style:italic;font-size:1.2rem">'+esc(f[0])+'</div></div></div>';}).join("")+'</div>'+
-      '<div class="center" style="padding:24px;color:var(--dim)"><p class="muted">@tineret_r5</p><p style="font-size:.78rem;margin-top:4px">Tineret Regiunea 5 Arad</p></div>';
-    document.getElementById("login").addEventListener("click", function(){ alert("Autentificarea cu Google se activează în pasul următor."); });
+      '<div class="section-h" style="margin-bottom:8px"><div><div class="eyebrow">Cont</div><h2>Setări</h2></div></div>'+
+      '<div class="set-list">'+
+        '<button class="set-row" id="privacy"><span class="ic">🛡️</span><span class="grow">Confidențialitate</span><span class="chev">›</span></button>'+
+        '<button class="set-row" id="logout"><span class="ic">⤶</span><span class="grow">Deconectează-te</span><span class="chev">›</span></button>'+
+        '<button class="set-row danger" id="del"><span class="ic">🗑</span><span class="grow">Șterge contul</span><span class="chev">›</span></button>'+
+      '</div>'+
+      '<div class="center" style="padding:28px 24px;color:var(--dim)"><p class="muted">@tineret_r5</p><p style="font-size:.78rem;margin-top:4px">Tineret Regiunea 5 Arad</p></div>';
+    document.getElementById("login").addEventListener("click", function(){ confirmSheet({ title:"În curând", body:"Autentificarea cu Google se activează în pasul următor.", confirm:"Am înțeles", onConfirm:function(){} }); });
+    document.getElementById("logout").addEventListener("click", function(){ confirmSheet({ title:"Deconectare", body:"Vrei să te deconectezi din cont?", confirm:"Deconectează-te", onConfirm:function(){ if(window.R5AUTH&&window.R5AUTH.logout) window.R5AUTH.logout(); } }); });
+    document.getElementById("del").addEventListener("click", deleteAccount);
+    document.getElementById("privacy").addEventListener("click", function(){ confirmSheet({ title:"Confidențialitate", body:"Datele tale (nume, poză de profil de la Google, mesajele din chat) sunt folosite doar în aplicație. Îți poți șterge contul oricând din Setări → Șterge contul.", confirm:"Am înțeles", onConfirm:function(){} }); });
   }
 
   function bindGo(){ view.querySelectorAll("[data-go]").forEach(function(s){ s.style.cursor="pointer"; s.addEventListener("click", function(){ navigate(s.dataset.go); }); }); }
 
-  navigate("home");
+  // ---- confirm sheet ---------------------------------------------- //
+  function confirmSheet(opts){
+    var o = el('<div class="overlay"><div class="sheet"><div class="grab"></div>'+
+      '<h3>'+esc(opts.title)+'</h3><p>'+esc(opts.body)+'</p>'+
+      '<button class="btn '+(opts.danger?"btn-danger":"btn-gold")+' btn-block" id="cf-ok" style="margin-top:22px">'+esc(opts.confirm||"Confirmă")+'</button>'+
+      '<button class="btn btn-ghost btn-block" id="cf-no" style="margin-top:8px">Anulează</button></div></div>');
+    o.addEventListener("click", function(e){ if(e.target===o) o.remove(); });
+    o.querySelector("#cf-no").addEventListener("click", function(){ o.remove(); });
+    o.querySelector("#cf-ok").addEventListener("click", function(){ o.remove(); opts.onConfirm && opts.onConfirm(); });
+    document.body.appendChild(o);
+  }
+
+  // ---- account deletion (Play Store requirement) ------------------ //
+  // Wired to real deletion once Google login is connected: it will remove
+  // the signed-in user's account and their data (chat messages, etc.).
+  function deleteAccount(){
+    confirmSheet({
+      title: "Ștergi contul?",
+      body: "Se șterg definitiv contul tău și tot ce ai postat (mesaje în chat). Acțiunea nu poate fi anulată.",
+      confirm: "Șterge definitiv contul", danger: true,
+      onConfirm: function(){
+        if (window.R5AUTH && window.R5AUTH.deleteAccount) { window.R5AUTH.deleteAccount(); }
+        else confirmSheet({ title: "Aproape gata", body: "Ștergerea contului se finalizează automat imediat ce activăm autentificarea cu Google. Butonul e deja aici și va funcționa complet atunci.", confirm: "Am înțeles", onConfirm: function(){} });
+      }
+    });
+  }
+  window.R5deleteAccount = deleteAccount;
+
+  var init = parseHash(); state.route = init.route; state.param = init.param; render();
 })();
