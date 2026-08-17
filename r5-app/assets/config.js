@@ -5,6 +5,11 @@ window.R5CONFIG = {
   url: "https://itttrepotdzvifseqvak.supabase.co",
   key: "sb_publishable_QTTQmwidPvxivhsX7FwDgw_7SieSSb7",
 
+  // Google OAuth Web client ID (public, safe to commit). Used by native
+  // Google sign-in in the Android app; must also be the client ID configured
+  // in Supabase → Auth → Providers → Google.
+  googleWebClientId: "803315240248-ev0bmfbfmi8lb1h93pshrck6kafs56ma.apps.googleusercontent.com",
+
   // Cloudinary — where the photos themselves are stored (25 GB free).
   // Fill these in once, from your Cloudinary dashboard:
   //   cloudName    = Dashboard → "Cloud name"

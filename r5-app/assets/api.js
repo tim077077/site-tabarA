@@ -56,6 +56,32 @@
     sb.auth.onAuthStateChange(function (_e, session) { _user = session ? session.user : null; refreshAdmin().then(notify); });
   }
 
+  // ---- native (Capacitor) Google sign-in --------------------------- //
+  var CAP = g.Capacitor;
+  function isNative() { return !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform()); }
+  function socialPlugin() { return CAP && CAP.Plugins && CAP.Plugins.SocialLogin; }
+  var _slInit = null;
+  function ensureSocialInit() {
+    var SL = socialPlugin();
+    if (!SL || !cfg.googleWebClientId) return Promise.resolve(null);
+    if (!_slInit) _slInit = SL.initialize({ google: { webClientId: cfg.googleWebClientId } }).catch(function () {});
+    return _slInit.then(function () { return SL; });
+  }
+  function nativeGoogle() {
+    return ensureSocialInit().then(function (SL) {
+      if (!SL) return { ok: false, code: "noplugin" };
+      return SL.login({ provider: "google", options: { scopes: ["email", "profile"] } }).then(function (res) {
+        var r = (res && res.result) || {};
+        var idToken = r.idToken || (r.accessToken && r.accessToken.token) || null;
+        if (!idToken) return { ok: false, code: "noidtoken" };
+        return sb.auth.signInWithIdToken({ provider: "google", token: idToken }).then(function (rr) {
+          if (!rr.error) { _user = rr.data.user; refreshAdmin().then(notify); }
+          return { ok: !rr.error, error: rr.error };
+        });
+      });
+    }).catch(function (e) { return { ok: false, error: e }; });
+  }
+
   g.R5AUTH = {
     ready: !!sb,
     user: function () { return profileOf(_user); },
@@ -63,6 +89,7 @@
     onChange: function (cb) { listeners.push(cb); cb(profileOf(_user), _admin); },
     signInWithGoogle: function () {
       if (!sb) return Promise.resolve({ ok: false, code: "nosb" });
+      if (isNative()) return nativeGoogle();
       return sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname } });
     },
     signInWithEmail: function (email) {
@@ -70,7 +97,11 @@
       return sb.auth.signInWithOtp({ email: email, options: { emailRedirectTo: location.origin + location.pathname } })
         .then(function (r) { return { ok: !r.error, error: r.error }; });
     },
-    logout: function () { if (!sb) return Promise.resolve(); return sb.auth.signOut(); },
+    logout: function () {
+      if (!sb) return Promise.resolve();
+      if (isNative()) { var SL = socialPlugin(); if (SL && SL.logout) { try { SL.logout({ provider: "google" }); } catch (e) {} } }
+      return sb.auth.signOut();
+    },
     deleteAccount: function () {
       if (!sb) return Promise.resolve();
       return sb.auth.getSession().then(function (res) {
