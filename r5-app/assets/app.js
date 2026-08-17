@@ -179,20 +179,33 @@
   }
 
   // ---- PHOTOS ----------------------------------------------------- //
-  function photoTile(url){ return el('<div class="tile"><div class="g" style="background:#140e08 center/cover no-repeat url(\''+encodeURI(url)+'\')"></div></div>'); }
+  function photoTile(url, onDelete){
+    var t=el('<div class="tile"><div class="g" style="background:#140e08 center/cover no-repeat url(\''+encodeURI(url)+'\')"></div></div>');
+    if(onDelete){ var b=el('<button class="tile-del" aria-label="Șterge poza">'+ic('trash')+'</button>'); b.addEventListener("click", function(ev){ ev.stopPropagation(); onDelete(); }); t.appendChild(b); }
+    return t;
+  }
   function placeholderTiles(box, n){ var grads=["#2a3a2a","#3a2c17","#3a1f1f","#26303a","#2f3a1f","#332742"]; box.innerHTML=""; for(var i=0;i<n;i++){ box.appendChild(el('<div class="tile"><div class="g" style="background:linear-gradient(150deg,'+grads[i%grads.length]+',#140e08)"></div></div>')); } }
   function segPhotos(e, box){
     box.innerHTML='<div class="center muted" style="padding:20px;font-size:.85rem">Se încarcă…</div>';
     R5API.getPhotos(e.id).then(function(ph){
-      box.innerHTML="";
-      if(R5AUTH.isAdmin()){ var up=el('<div style="padding:12px 20px"><label class="btn btn-outline btn-sm btn-block" style="cursor:pointer">'+ic('plus')+'Adaugă poze<input type="file" accept="image/*" multiple hidden id="pf"></label></div>'); box.appendChild(up); up.querySelector("#pf").addEventListener("change", function(ev){ uploadPhotos(e, ev.target.files, function(){ seg(e,"poze"); }); }); }
-      if(!ph.length){ box.appendChild(el('<div class="empty"><div class="ic">'+ic('gallery')+'</div><p>Încă nu sunt poze</p></div>')); return; }
-      var g=el('<div class="gallery" style="margin-top:8px"></div>'); ph.forEach(function(p){ g.appendChild(photoTile(p.url)); }); box.appendChild(g);
+      box.innerHTML=""; var me=R5AUTH.user();
+      if(me){ var up=el('<div style="padding:12px 20px"><label class="btn btn-outline btn-sm btn-block" style="cursor:pointer">'+ic('plus')+'Adaugă pozele tale<input type="file" accept="image/*" multiple hidden id="pf"></label></div>'); box.appendChild(up); up.querySelector("#pf").addEventListener("change", function(ev){ uploadPhotos(e, ev.target.files, function(){ seg(e,"poze"); }); }); }
+      else { var lg=el('<div style="padding:12px 20px"><button class="btn btn-outline btn-sm btn-block" id="pf-login">'+ic('plus')+'Conectează-te ca să adaugi poze</button></div>'); box.appendChild(lg); lg.querySelector("#pf-login").addEventListener("click", function(){ navigate("profile"); }); }
+      if(!ph.length){ box.appendChild(el('<div class="empty"><div class="ic">'+ic('gallery')+'</div><p>Încă nu sunt poze. Pune tu prima!</p></div>')); return; }
+      var admin=R5AUTH.isAdmin();
+      var g=el('<div class="gallery" style="margin-top:8px"></div>');
+      ph.forEach(function(p){
+        var canDel = admin || (me && p.uploaded_by===me.id);
+        g.appendChild(photoTile(p.url, canDel ? function(){ confirmSheet({title:"Ștergi poza?",body:"Se scoate din galeria evenimentului.",confirm:"Șterge",danger:true,onConfirm:function(){ R5API.deletePhoto(p.id).then(function(){ seg(e,"poze"); }); }}); } : null));
+      });
+      box.appendChild(g);
     });
   }
   function uploadPhotos(e, files, done){
-    var arr=Array.prototype.slice.call(files); if(!arr.length) return; toast("Se încarcă "+arr.length+" poze…");
-    (function next(i){ if(i>=arr.length){ toast("Gata!"); done&&done(); return; } R5API.uploadPhoto(e.id, arr[i]).then(function(){ next(i+1); }).catch(function(){ next(i+1); }); })(0);
+    var arr=Array.prototype.slice.call(files); if(!arr.length) return;
+    if(R5API.demo || (R5API.photoUploads && !R5API.photoUploads())){ confirmSheet({title:"Stocare foto neconfigurată",body:"Încărcarea pozelor pornește după ce se conectează Cloudinary (setare de câteva minute). Pe site-ul publicat va funcționa.",confirm:"Am înțeles",onConfirm:function(){}}); return; }
+    toast("Se încarcă "+arr.length+" "+(arr.length===1?"poză":"poze")+"…"); var okc=0;
+    (function next(i){ if(i>=arr.length){ toast(okc?("Gata — "+okc+" adăugate"):"Nu s-a încărcat nimic."); done&&done(); return; } R5API.uploadPhoto(e.id, arr[i]).then(function(r){ if(r&&r.ok) okc++; next(i+1); }).catch(function(){ next(i+1); }); })(0);
   }
 
   // ---- GALLERY ---------------------------------------------------- //

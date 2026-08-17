@@ -23,6 +23,25 @@
     return { id: u.id, name: m.full_name || m.name || (u.email ? u.email.split("@")[0] : "Tânăr R5"),
       avatar: m.avatar_url || m.picture || null, email: u.email || null };
   }
+  // downscale a photo in the browser before upload (saves storage + data)
+  function resizeImage(file, maxDim, quality) {
+    return new Promise(function (resolve) {
+      if (!/^image\//.test(file.type) || typeof document === "undefined") { resolve(file); return; }
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var s = Math.min(1, maxDim / Math.max(img.width, img.height));
+        var cw = Math.round(img.width * s), ch = Math.round(img.height * s);
+        var c = document.createElement("canvas"); c.width = cw; c.height = ch;
+        c.getContext("2d").drawImage(img, 0, 0, cw, ch);
+        URL.revokeObjectURL(url);
+        c.toBlob(function (b) { resolve(b || file); }, "image/jpeg", quality || 0.82);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+  var CLOUD = (cfg && cfg.cloudinary) || {};
+  function cloudReady() { return !!(CLOUD.cloudName && CLOUD.uploadPreset); }
 
   // ---- AUTH -------------------------------------------------------- //
   var listeners = [], _user = null, _admin = false;
@@ -81,7 +100,7 @@
     },
     getPhotos: function (eventId) {
       if (!sb) return Promise.resolve([]);
-      return sb.from("r5_photos").select("id,url").eq("event_id", eventId).order("created_at", { ascending: false })
+      return sb.from("r5_photos").select("id,url,uploaded_by").eq("event_id", eventId).order("created_at", { ascending: false })
         .then(function (r) { return r.data || []; });
     },
     getMessages: function (eventId) {
@@ -115,15 +134,23 @@
       return q.then(function (r) { return { ok: !r.error, error: r.error }; });
     },
     deleteEvent: function (id) { if (!sb) return Promise.resolve({ ok: false }); return sb.from("r5_events").delete().eq("id", id).then(function (r) { return { ok: !r.error, error: r.error }; }); },
+    photoUploads: cloudReady,
     uploadPhoto: function (eventId, file) {
-      if (!sb) return Promise.resolve({ ok: false });
-      var ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      var path = eventId + "/" + Date.now() + "_" + Math.random().toString(36).slice(2, 8) + "." + ext;
-      return sb.storage.from("event-photos").upload(path, file, { cacheControl: "3600", upsert: false }).then(function (up) {
-        if (up.error) return { ok: false, error: up.error };
-        var url = sb.storage.from("event-photos").getPublicUrl(path).data.publicUrl;
-        return sb.from("r5_photos").insert({ event_id: eventId, url: url, storage_path: path, uploaded_by: _user ? _user.id : null })
-          .then(function (r) { return { ok: !r.error, url: url, error: r.error }; });
+      if (!sb) return Promise.resolve({ ok: false, code: "nosb" });
+      if (!_user) return Promise.resolve({ ok: false, code: "auth" });
+      if (!cloudReady()) return Promise.resolve({ ok: false, code: "nocloud" });
+      return resizeImage(file, 1600, 0.82).then(function (blob) {
+        var fd = new FormData();
+        fd.append("file", blob);
+        fd.append("upload_preset", CLOUD.uploadPreset);
+        fd.append("folder", "r5/" + eventId);
+        return fetch("https://api.cloudinary.com/v1_1/" + CLOUD.cloudName + "/image/upload", { method: "POST", body: fd })
+          .then(function (r) { return r.json(); })
+          .then(function (up) {
+            if (!up || !up.secure_url) return { ok: false, error: up && up.error };
+            return sb.from("r5_photos").insert({ event_id: eventId, url: up.secure_url, storage_path: up.public_id, uploaded_by: _user.id })
+              .then(function (r) { return { ok: !r.error, url: up.secure_url, error: r.error }; });
+          });
       });
     },
     deletePhoto: function (id) { if (!sb) return Promise.resolve(); return sb.from("r5_photos").delete().eq("id", id); }
