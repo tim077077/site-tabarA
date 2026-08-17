@@ -11,7 +11,7 @@ window.R5CONFIG = {
   //   uploadPreset = Settings → Upload → Upload presets → add an
   //                  *unsigned* preset, then paste its name here.
   cloudinary: {
-    cloudName: "pz8e0bhk",   // Cloudinary "Cloud name"
-    uploadPreset: ""         // name of your *unsigned* upload preset (Settings → Upload)
+    cloudName: "pz8e0bhk",     // Cloudinary "Cloud name"
+    uploadPreset: "ml_default" // unsigned upload preset
   }
 };
