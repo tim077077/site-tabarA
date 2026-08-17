@@ -9,6 +9,26 @@
   var tabbar = document.getElementById("tabbar");
   var D = window.R5DATA;
 
+  // ---- theme toggle (dark cinematic <-> light sepia) -------------- //
+  (function themeInit(){
+    var btn = document.getElementById("themeToggle");
+    if (!btn) return;
+    function cur(){ return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark"; }
+    function apply(){
+      btn.textContent = cur() === "light" ? "☾" : "☀";
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute("content", cur() === "light" ? "#e7dbc0" : "#17110b");
+    }
+    btn.addEventListener("click", function(){
+      var next = cur() === "light" ? "dark" : "light";
+      if (next === "dark") document.documentElement.removeAttribute("data-theme");
+      else document.documentElement.setAttribute("data-theme", "light");
+      try { localStorage.setItem("r5-theme", next); } catch(e){}
+      apply();
+    });
+    apply();
+  })();
+
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
   function el(h){ var t=document.createElement("template"); t.innerHTML=h.trim(); return t.content.firstElementChild; }
   function upcoming(){ return D.events.filter(function(e){return !e.past;}).sort(function(a,b){return new Date(a.start)-new Date(b.start);}); }
@@ -129,7 +149,7 @@
     view.innerHTML =
       '<div class="back-fab" id="back">‹</div>'+
       '<section class="detail-hero"><div class="bg" style="background:'+e.grad+'"></div><div class="grain-s" style="position:absolute;inset:0;z-index:1;opacity:.07"></div>'+
-        '<div class="content"><div class="kicker" style="font-family:var(--poster);letter-spacing:.2em;color:var(--gold-2);text-transform:uppercase;font-size:.82rem">'+esc(e.kicker)+'</div>'+
+        '<div class="content"><div class="kicker" style="font-family:var(--poster);letter-spacing:.2em;color:#e6c877;text-transform:uppercase;font-size:.82rem">'+esc(e.kicker)+'</div>'+
         '<h1>'+esc(e.title)+'</h1><div class="muted" style="margin-top:6px">'+esc(e.dateLabel)+'</div></div></section>'+
       '<div class="segs" id="segs"><button data-s="info" class="on">Info</button><button data-s="chat">Chat</button><button data-s="poze">Poze</button></div>'+
       '<div id="seg-body"></div>';

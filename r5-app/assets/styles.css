@@ -35,6 +35,41 @@
   --sans: "Inter", system-ui, -apple-system, sans-serif;
 }
 
+/* ---------- LIGHT (aged paper / sepia vintage) theme ---------- */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --paper:   #e7dbc0;   /* aged paper */
+  --paper-2: #eee3ca;
+  --card:    #f5eeda;
+  --card-2:  #fbf6e9;
+  --cream:   #37291a;   /* ink (dark) */
+  --cream-2: #4c3925;
+  --sand:    #7c6647;
+  --dim:     #9a8562;
+  --dimmer:  #b8a684;
+  --gold:    #9a6f1e;
+  --gold-2:  #7d5a17;
+  --brown:   #7a5c37;
+  --line:    rgba(55,41,26,.16);
+  --line-2:  rgba(55,41,26,.30);
+}
+:root[data-theme="light"] .grain { mix-blend-mode: multiply; opacity: .09; }
+:root[data-theme="light"] .vignette { background: radial-gradient(130% 100% at 50% 0%, transparent 55%, rgba(90,66,32,.14) 100%); }
+:root[data-theme="light"] .tabbar { background: rgba(238,227,202,.9); }
+:root[data-theme="light"] .btn-gold { color: #fbf6e9; }
+:root[data-theme="light"] .segs button.on, :root[data-theme="light"] .theme-toggle { color: #fbf6e9; }
+
+/* theme toggle (floating) */
+.theme-toggle {
+  position: fixed; top: calc(12px + env(safe-area-inset-top)); right: 14px; z-index: 60;
+  width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+  background: rgba(20,15,9,.5); border: 1px solid var(--line-2); color: var(--gold-2);
+  display: grid; place-items: center; font-size: 1.05rem; backdrop-filter: blur(8px);
+  transition: transform .1s, background .2s;
+}
+:root[data-theme="light"] .theme-toggle { background: rgba(251,246,233,.6); color: var(--gold); }
+.theme-toggle:active { transform: scale(.92); }
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -167,9 +202,9 @@ img { display: block; max-width: 100%; }
 .poster .grain-s { position: absolute; inset: 0; z-index: 1; opacity: .06; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .poster .content { position: relative; z-index: 2; padding: 18px 18px 20px; }
-.poster .kicker { font-family: var(--poster); letter-spacing: .2em; font-size: .78rem; color: var(--gold-2); text-transform: uppercase; }
-.poster h3 { font-family: var(--poster); font-weight: 400; font-size: 2.1rem; text-transform: uppercase; letter-spacing: .01em; color: var(--cream); margin-top: 4px; line-height: .98; }
-.poster .meta { display: flex; gap: 14px; margin-top: 10px; font-size: .84rem; color: var(--cream-2); flex-wrap: wrap; }
+.poster .kicker { font-family: var(--poster); letter-spacing: .2em; font-size: .78rem; color: #e6c877; text-transform: uppercase; }
+.poster h3 { font-family: var(--poster); font-weight: 400; font-size: 2.1rem; text-transform: uppercase; letter-spacing: .01em; color: #f1e7d3; margin-top: 4px; line-height: .98; }
+.poster .meta { display: flex; gap: 14px; margin-top: 10px; font-size: .84rem; color: #e6d8bd; flex-wrap: wrap; }
 .poster .meta span { display: inline-flex; align-items: center; gap: 6px; }
 .poster .corner { position: absolute; width: 18px; height: 18px; border: 1px solid var(--gold); z-index: 3; opacity: .7; }
 .poster .corner.tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
@@ -214,8 +249,9 @@ img { display: block; max-width: 100%; }
 .detail-hero { position: relative; aspect-ratio: 4/5; display: flex; flex-direction: column; justify-content: flex-end; border-bottom: 1px solid var(--line); }
 .detail-hero .bg { position: absolute; inset: 0; }
 .detail-hero .bg::after { content:""; position:absolute; inset:0; background: linear-gradient(180deg, rgba(20,14,8,.2), rgba(20,14,8,.55) 50%, var(--paper) 99%); }
-.detail-hero .content { position: relative; z-index: 2; padding: 20px; }
-.detail-hero h1 { font-family: var(--poster); font-weight: 400; text-transform: uppercase; font-size: clamp(2.4rem,10vw,3.2rem); }
+.detail-hero .content { position: relative; z-index: 2; padding: 20px; color: #f1e7d3; }
+.detail-hero .content .muted { color: #cdba95 !important; }
+.detail-hero h1 { font-family: var(--poster); font-weight: 400; text-transform: uppercase; font-size: clamp(2.4rem,10vw,3.2rem); color: #f1e7d3; }
 .back-fab { position: absolute; top: calc(14px + env(safe-area-inset-top)); left: 14px; z-index: 5; width: 42px; height: 42px; border-radius: 50%; background: rgba(20,14,8,.55); border: 1px solid var(--line-2); color: var(--cream); display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(6px); font-size: 1.1rem; }
 
 /* segmented tabs (detail) */
