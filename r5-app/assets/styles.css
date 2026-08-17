@@ -292,3 +292,11 @@ img { display: block; max-width: 100%; }
 .hidden { display: none !important; }
 .chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--poster); letter-spacing: .12em; text-transform: uppercase; font-size: .72rem; color: var(--gold-2); border: 1px solid var(--line-2); padding: 5px 11px; border-radius: 999px; }
 .mt { margin-top: 14px; } .mt-lg { margin-top: 24px; }
+
+/* ---------- form fields (admin event editor) ---------- */
+.fl { display: block; font-family: var(--poster); letter-spacing: .1em; text-transform: uppercase; font-size: .7rem; color: var(--gold-2); margin: 14px 0 6px; }
+.fi { width: 100%; background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-sm, 8px); padding: 12px 14px; color: var(--cream); }
+.fi:focus { outline: none; border-color: var(--gold); }
+textarea.fi { resize: vertical; min-height: 88px; line-height: 1.5; }
+.gswatch { cursor: pointer; padding: 0; transition: border-color .15s, transform .15s; }
+.gswatch:active { transform: scale(.94); }
