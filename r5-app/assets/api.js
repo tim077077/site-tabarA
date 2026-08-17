@@ -143,7 +143,8 @@
         var fd = new FormData();
         fd.append("file", blob);
         fd.append("upload_preset", CLOUD.uploadPreset);
-        fd.append("folder", "r5/" + eventId);
+        // no folder param: unsigned presets can reject it, and the account uses
+        // dynamic folders — the preset's own folder setting handles placement.
         return fetch("https://api.cloudinary.com/v1_1/" + CLOUD.cloudName + "/image/upload", { method: "POST", body: fd })
           .then(function (r) { return r.json(); })
           .then(function (up) {

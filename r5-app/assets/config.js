@@ -11,7 +11,7 @@ window.R5CONFIG = {
   //   uploadPreset = Settings → Upload → Upload presets → add an
   //                  *unsigned* preset, then paste its name here.
   cloudinary: {
-    cloudName: "",      // e.g. "tineret-r5"
-    uploadPreset: ""    // e.g. "r5_unsigned"
+    cloudName: "pz8e0bhk",   // Cloudinary "Cloud name"
+    uploadPreset: ""         // name of your *unsigned* upload preset (Settings → Upload)
   }
 };
