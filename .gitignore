@@ -1,0 +1,10 @@
+# Build artifacts (APK/AAB are delivered directly, not tracked in git)
+dist/
+*.apk
+*.aab
+
+# Node / Capacitor wrapper build output
+node_modules/
+android/build/
+android/app/build/
+.gradle/
