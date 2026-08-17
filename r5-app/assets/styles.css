@@ -150,7 +150,7 @@ input:focus-visible, textarea:focus-visible,
 }
 .letterbox { height: 8px; background: repeating-linear-gradient(90deg, var(--gold) 0 18px, transparent 18px 34px); opacity: .5; }
 .crest-img {
-  display: block; width: min(62vw, 232px); height: auto; margin: 22px auto 12px;
+  display: block; width: min(70vw, 300px); height: auto; margin: 20px auto 10px;
   filter: drop-shadow(0 8px 22px rgba(0,0,0,.5));
 }
 :root[data-theme="light"] .crest-img { filter: drop-shadow(0 6px 16px rgba(90,66,32,.25)); }
