@@ -95,7 +95,7 @@
     var up=upcoming(), featured=up[0];
     view.innerHTML='<div class="letterbox"></div><section class="hero">'+
       '<div class="eyebrow center" style="justify-content:center">Regiunea 5 · Arad</div>'+
-      '<div class="crest"><div class="ring"></div><div class="ring inner"></div><div class="mono"><b>R</b>5</div></div>'+
+      '<img class="crest-img" src="assets/crest.png" alt="Stema Tineret R5" />'+
       '<h1>Tineret <span>R5</span></h1><div class="tagline">chemați la mai mult</div>'+
       '<div class="fives">'+D.identity.fives.map(function(f){return '<span>'+esc(f[0])+'</span>';}).join("")+'</div></section>';
     if(featured){ view.insertAdjacentHTML("beforeend",'<div class="section-h"><div><h2>Nu rata</h2></div></div>'); var w=el('<div class="stack"></div>'); w.appendChild(posterCard(featured)); view.appendChild(w); }
