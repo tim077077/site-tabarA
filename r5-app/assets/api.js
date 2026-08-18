@@ -45,7 +45,32 @@
 
   // ---- AUTH -------------------------------------------------------- //
   var listeners = [], _user = null, _admin = false;
-  function notify() { var p = profileOf(_user); listeners.forEach(function (f) { try { f(p, _admin); } catch (e) {} }); }
+  function notify() { var p = profileOf(_user); listeners.forEach(function (f) { try { f(p, _admin); } catch (e) {} }); try { registerPush(); } catch (e) {} }
+
+  // ---- push notifications (native only) --------------------------- //
+  function registerPush() {
+    if (!sb || !_user) return;
+    var CAP = g.Capacitor;
+    if (!CAP || !CAP.isNativePlatform || !CAP.isNativePlatform()) return;
+    var PN = CAP.Plugins && CAP.Plugins.PushNotifications;
+    if (!PN) return;
+    if (!registerPush._bound) {
+      registerPush._bound = true;
+      PN.addListener("registration", function (t) {
+        var token = t && t.value; if (!token || !_user) return;
+        sb.from("r5_push_tokens").upsert(
+          { token: token, user_id: _user.id, platform: "android", updated_at: new Date().toISOString() },
+          { onConflict: "token" }
+        ).then(function () {}, function () {});
+      });
+      PN.addListener("pushNotificationActionPerformed", function (ev) {
+        try { var url = ev && ev.notification && ev.notification.data && ev.notification.data.url; if (url) location.hash = url; } catch (e) {}
+      });
+    }
+    PN.requestPermissions().then(function (res) {
+      if (res && res.receive === "granted") PN.register();
+    }).catch(function () {});
+  }
   function refreshAdmin() {
     if (!sb || !_user) { _admin = false; return Promise.resolve(); }
     return sb.from("r5_admins").select("user_id").eq("user_id", _user.id).maybeSingle()
