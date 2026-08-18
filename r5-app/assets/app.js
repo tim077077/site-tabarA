@@ -10,14 +10,11 @@
   var EVENTS = [];
   var chatUnsub = null;
 
-  // ---- theme toggle ----------------------------------------------- //
-  (function themeInit(){
-    var btn = document.getElementById("themeToggle"); if (!btn) return;
-    function cur(){ return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark"; }
-    function apply(){ btn.textContent = cur()==="light" ? "☾" : "☀"; var m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", cur()==="light"?"#e7dbc0":"#17110b"); }
-    btn.addEventListener("click", function(){ var n = cur()==="light"?"dark":"light"; if(n==="dark") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme","light"); try{localStorage.setItem("r5-theme",n);}catch(e){} apply(); });
-    apply();
-  })();
+  // ---- theme (toggled from Settings) ------------------------------ //
+  function themeCur(){ return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark"; }
+  function themeApply(){ var m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", themeCur()==="light"?"#e7dbc0":"#17110b"); }
+  function themeToggle(){ var n = themeCur()==="light"?"dark":"light"; if(n==="dark") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme","light"); try{localStorage.setItem("r5-theme",n);}catch(e){} themeApply(); }
+  themeApply();
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
   function el(h){ var t=document.createElement("template"); t.innerHTML=h.trim(); return t.content.firstElementChild; }
@@ -43,7 +40,8 @@
     logout:  '<path d="M14 4.5h3.5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H14"/><path d="M10.5 12H3.5m0 0L7 8.4M3.5 12 7 15.6"/>',
     trash:   '<path d="M4.5 7h15M9.5 7V4.3h5V7M6.5 7l1 12.7h9L17.5 7"/>',
     send:    '<path d="M4.5 11.6 20 5l-6.4 15-2.6-6.4-6.5-2Z"/>',
-    plus:    '<path d="M12 5v14M5 12h14"/>'
+    plus:    '<path d="M12 5v14M5 12h14"/>',
+    theme:   '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/>'
   };
   function ic(name){ return '<svg class="svic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[name]||"")+'</svg>'; }
   // click + keyboard (Enter/Space) for non-button controls
@@ -93,11 +91,11 @@
   // ---- HOME ------------------------------------------------------- //
   function renderHome(){
     var up=upcoming(), featured=up[0];
-    view.innerHTML='<div class="letterbox"></div><section class="hero">'+
+    view.innerHTML='<section class="hero">'+
       '<div class="eyebrow center" style="justify-content:center">Regiunea 5 · Arad</div>'+
       '<img class="crest-img" src="assets/logo.png" alt="Tineret R5" />'+
-      '<div class="tagline" style="margin-top:4px">chemați la mai mult</div>'+
-      '<div class="fives">'+D.identity.fives.map(function(f){return '<span>'+esc(f[0])+'</span>';}).join("")+'</div></section>';
+      '<div class="tagline" style="margin-top:4px">Chemat la mai mult</div>'+
+      '</section>';
     if(featured){ view.insertAdjacentHTML("beforeend",'<div class="section-h"><div><h2>Nu rata</h2></div></div>'); var w=el('<div class="stack"></div>'); w.appendChild(posterCard(featured)); view.appendChild(w); }
     view.insertAdjacentHTML("beforeend",'<div class="section-h"><div><h2>Următoarele</h2></div><span class="more" data-go="events">Toate '+ic('chev')+'</span></div>');
     var list=el('<div></div>'); up.slice(1).forEach(function(e){ list.appendChild(eventRow(e)); });
@@ -122,7 +120,7 @@
 
   // ---- EVENTS ----------------------------------------------------- //
   function renderEvents(){
-    view.innerHTML='<div class="letterbox"></div><div class="section-h" style="margin-top:26px"><div><div class="eyebrow">Regiunea 5 · Arad</div><h2>Evenimente</h2></div></div>';
+    view.innerHTML='<div class="section-h" style="margin-top:28px"><div><div class="eyebrow">Regiunea 5 · Arad</div><h2>Evenimente</h2></div></div>';
     var up=upcoming(), pv=past();
     var w=el('<div class="stack"></div>'); up.forEach(function(e){ w.appendChild(posterCard(e)); });
     if(!up.length) w.innerHTML='<div class="empty"><div class="ic">'+ic('events')+'</div><p>Niciun eveniment programat</p></div>';
@@ -210,7 +208,7 @@
 
   // ---- GALLERY ---------------------------------------------------- //
   function renderGallery(){
-    view.innerHTML='<div class="letterbox"></div><div class="section-h" style="margin-top:26px"><div><div class="eyebrow">Amintiri</div><h2>Galerie</h2></div></div><div id="gwrap"></div>';
+    view.innerHTML='<div class="section-h" style="margin-top:28px"><div><div class="eyebrow">Amintiri</div><h2>Galerie</h2></div></div><div id="gwrap"></div>';
     /* one eyebrow kept here on purpose: it is the page's only kicker */
     var wrap=document.getElementById("gwrap"); var pv=past();
     if(!pv.length){ wrap.innerHTML='<div class="empty"><p style="font-size:1rem">Nicio amintire încă</p></div>'; return; }
@@ -231,12 +229,11 @@
         '<div style="display:flex;gap:8px"><input id="mail" placeholder="email@exemplu.ro" style="flex:1;background:var(--card);border:1px solid var(--line-2);border-radius:8px;padding:12px 14px;color:var(--cream)"><button class="btn btn-outline btn-sm" id="m-login">Trimite</button></div>'+
         (R5API.demo?'<p class="center muted" style="font-size:.78rem;margin-top:12px">Autentificarea funcționează pe site-ul publicat.</p>':'')+'</div>';
 
-    view.innerHTML='<div class="letterbox"></div><div class="section-h" style="margin-top:28px;margin-bottom:18px"><div><div class="eyebrow">Regiunea 5 · Arad</div><h2>Profil</h2></div></div>'+
+    view.innerHTML='<div class="section-h" style="margin-top:30px;margin-bottom:18px"><div><div class="eyebrow">Regiunea 5 · Arad</div><h2>Profil</h2></div></div>'+
       '<div style="padding:0 0 4px">'+authBlock+'</div><div class="rule" style="margin-top:20px"></div>'+
       (R5AUTH.isAdmin()?'<div class="set-list" style="border-top:none"><button class="set-row" id="go-admin"><span class="ic">'+ic('admin')+'</span><span class="grow">Panou organizator</span><span class="chev">'+ic('chev')+'</span></button></div>':'')+
-      '<div class="section-h"><div><h2>Cei cinci R</h2></div></div>'+
-      '<ol class="fives-list">'+D.identity.fives.map(function(f,i){return '<li><span class="n">'+("0"+(i+1)).slice(-2)+'</span><span class="w">'+esc(f[0])+'</span></li>';}).join("")+'</ol>'+
       '<div class="section-h" style="margin-bottom:8px"><div><h2>Setări</h2></div></div><div class="set-list">'+
+        '<button class="set-row" id="theme"><span class="ic">'+ic('theme')+'</span><span class="grow">Temă</span><span class="muted" id="theme-val" style="font-size:.85rem">'+(themeCur()==="light"?"Deschis":"Închis")+'</span></button>'+
         '<button class="set-row" id="privacy"><span class="ic">'+ic('shield')+'</span><span class="grow">Confidențialitate</span><span class="chev">'+ic('chev')+'</span></button>'+
         (u?'<button class="set-row" id="logout"><span class="ic">'+ic('logout')+'</span><span class="grow">Deconectează-te</span><span class="chev">'+ic('chev')+'</span></button>':'')+
         (u?'<button class="set-row danger" id="del"><span class="ic">'+ic('trash')+'</span><span class="grow">Șterge contul</span><span class="chev">'+ic('chev')+'</span></button>':'')+
@@ -245,6 +242,7 @@
     var gl=document.getElementById("g-login"); gl&&gl.addEventListener("click", function(){ if(R5API.demo){ confirmSheet({title:"În curând",body:"Autentificarea cu Google funcționează pe site-ul publicat (după configurarea Google).",confirm:"Am înțeles",onConfirm:function(){}}); return;} R5AUTH.signInWithGoogle(); });
     var ml=document.getElementById("m-login"); ml&&ml.addEventListener("click", function(){ var em=(document.getElementById("mail").value||"").trim(); if(!em){ return; } R5AUTH.signInWithEmail(em).then(function(r){ if(r&&r.ok!==false) confirmSheet({title:"Verifică email-ul",body:"Ți-am trimis un link de conectare pe "+em+".",confirm:"OK",onConfirm:function(){}}); else toast("Nu s-a putut trimite."); }); });
     var ga=document.getElementById("go-admin"); ga&&ga.addEventListener("click", function(){ navigate("admin"); });
+    var th=document.getElementById("theme"); th&&th.addEventListener("click", function(){ themeToggle(); var v=document.getElementById("theme-val"); if(v) v.textContent = themeCur()==="light"?"Deschis":"Închis"; });
     document.getElementById("privacy").addEventListener("click", function(){ confirmSheet({title:"Confidențialitate",body:"Datele tale (nume și poză de la Google, mesajele din chat) sunt folosite doar în aplicație. Îți poți șterge contul oricând din Setări → Șterge contul.",confirm:"Am înțeles",onConfirm:function(){}}); });
     var lo=document.getElementById("logout"); lo&&lo.addEventListener("click", function(){ confirmSheet({title:"Deconectare",body:"Vrei să te deconectezi?",confirm:"Deconectează-te",onConfirm:function(){ R5AUTH.logout().then(function(){ navigate("profile"); }); }}); });
     var dl=document.getElementById("del"); dl&&dl.addEventListener("click", deleteAccount);
