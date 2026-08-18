@@ -239,7 +239,12 @@
         (u?'<button class="set-row danger" id="del"><span class="ic">'+ic('trash')+'</span><span class="grow">Șterge contul</span><span class="chev">'+ic('chev')+'</span></button>':'')+
       '</div><div class="center" style="padding:28px 24px;color:var(--dim)"><p class="muted" style="font-family:var(--serif);font-style:italic;font-size:1.15rem">@tineret_r5</p><p style="font-size:.78rem;margin-top:2px">Tineret Regiunea 5 Arad</p></div>';
 
-    var gl=document.getElementById("g-login"); gl&&gl.addEventListener("click", function(){ if(R5API.demo){ confirmSheet({title:"În curând",body:"Autentificarea cu Google funcționează pe site-ul publicat (după configurarea Google).",confirm:"Am înțeles",onConfirm:function(){}}); return;} R5AUTH.signInWithGoogle(); });
+    var gl=document.getElementById("g-login"); gl&&gl.addEventListener("click", function(){
+      if(R5API.demo){ confirmSheet({title:"În curând",body:"Autentificarea cu Google funcționează în aplicație / pe site-ul publicat.",confirm:"Am înțeles",onConfirm:function(){}}); return; }
+      Promise.resolve(R5AUTH.signInWithGoogle()).then(function(r){
+        if(r && r.ok===false){ confirmSheet({title:"Login Google — eroare", body: String((r.error!=null?r.error:r.code)||"necunoscut"), confirm:"OK", onConfirm:function(){}}); }
+      }).catch(function(e){ confirmSheet({title:"Login Google — eroare", body: String((e&&(e.message||e))||"necunoscut"), confirm:"OK", onConfirm:function(){}}); });
+    });
     var ml=document.getElementById("m-login"); ml&&ml.addEventListener("click", function(){ var em=(document.getElementById("mail").value||"").trim(); if(!em){ return; } R5AUTH.signInWithEmail(em).then(function(r){ if(r&&r.ok!==false) confirmSheet({title:"Verifică email-ul",body:"Ți-am trimis un link de conectare pe "+em+".",confirm:"OK",onConfirm:function(){}}); else toast("Nu s-a putut trimite."); }); });
     var ga=document.getElementById("go-admin"); ga&&ga.addEventListener("click", function(){ navigate("admin"); });
     var th=document.getElementById("theme"); th&&th.addEventListener("click", function(){ themeToggle(); var v=document.getElementById("theme-val"); if(v) v.textContent = themeCur()==="light"?"Deschis":"Închis"; });

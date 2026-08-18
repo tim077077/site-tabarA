@@ -85,26 +85,24 @@
   var CAP = g.Capacitor;
   function isNative() { return !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform()); }
   function socialPlugin() { return CAP && CAP.Plugins && CAP.Plugins.SocialLogin; }
-  var _slInit = null;
-  function ensureSocialInit() {
-    var SL = socialPlugin();
-    if (!SL || !cfg.googleWebClientId) return Promise.resolve(null);
-    if (!_slInit) _slInit = SL.initialize({ google: { webClientId: cfg.googleWebClientId } }).catch(function () {});
-    return _slInit.then(function () { return SL; });
-  }
+  function errStr(e) { if (!e) return "necunoscut"; return e.message || e.errorMessage || e.error_description || e.error || e.code || (typeof e === "string" ? e : JSON.stringify(e)); }
   function nativeGoogle() {
-    return ensureSocialInit().then(function (SL) {
-      if (!SL) return { ok: false, code: "noplugin" };
-      return SL.login({ provider: "google", options: { scopes: ["email", "profile"] } }).then(function (res) {
+    var SL = socialPlugin();
+    if (!SL) return Promise.resolve({ ok: false, error: "Pluginul SocialLogin nu e încărcat" });
+    if (!cfg.googleWebClientId) return Promise.resolve({ ok: false, error: "Lipsește googleWebClientId" });
+    return SL.initialize({ google: { webClientId: cfg.googleWebClientId } })
+      .catch(function (e) { throw new Error("initialize: " + errStr(e)); })
+      .then(function () { return SL.login({ provider: "google", options: { scopes: ["email", "profile"] } }); })
+      .then(function (res) {
         var r = (res && res.result) || {};
         var idToken = r.idToken || (r.accessToken && r.accessToken.token) || null;
-        if (!idToken) return { ok: false, code: "noidtoken" };
+        if (!idToken) return { ok: false, error: "Google nu a returnat idToken" };
         return sb.auth.signInWithIdToken({ provider: "google", token: idToken }).then(function (rr) {
           if (!rr.error) { _user = rr.data.user; refreshAdmin().then(notify); }
-          return { ok: !rr.error, error: rr.error };
+          return { ok: !rr.error, error: rr.error ? ("Supabase: " + errStr(rr.error)) : null };
         });
-      });
-    }).catch(function (e) { return { ok: false, error: e }; });
+      })
+      .catch(function (e) { return { ok: false, error: errStr(e) }; });
   }
 
   g.R5AUTH = {
