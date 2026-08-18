@@ -92,7 +92,7 @@
     if (!cfg.googleWebClientId) return Promise.resolve({ ok: false, error: "Lipsește googleWebClientId" });
     return SL.initialize({ google: { webClientId: cfg.googleWebClientId } })
       .catch(function (e) { throw new Error("initialize: " + errStr(e)); })
-      .then(function () { return SL.login({ provider: "google", options: { scopes: ["email", "profile"] } }); })
+      .then(function () { return SL.login({ provider: "google", options: {} }); })
       .then(function (res) {
         var r = (res && res.result) || {};
         var idToken = r.idToken || (r.accessToken && r.accessToken.token) || null;

@@ -72,7 +72,8 @@
 :root[data-theme="light"] .theme-toggle { background: rgba(251,246,233,.6); color: var(--gold); }
 .theme-toggle:active { transform: scale(.92); }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+button, a, [role="button"], input, textarea, select { -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--sans);
