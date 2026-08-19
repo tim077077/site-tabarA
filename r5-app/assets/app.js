@@ -64,8 +64,10 @@
   tabbar.querySelectorAll("a").forEach(function(a){ a.setAttribute("tabindex","0"); a.setAttribute("role","button"); activable(a, function(){ navigate(a.dataset.route); }); });
   function setTab(){ tabbar.querySelectorAll("a").forEach(function(a){ a.classList.toggle("on", a.dataset.route===state.route || (state.route==="event"&&a.dataset.route==="events")); }); }
 
-  function cleanup(){ if(chatUnsub){ chatUnsub(); chatUnsub=null; } if(cdTimer){ clearInterval(cdTimer); cdTimer=null; } var cb=document.querySelector(".chat-bar"); if(cb) cb.remove(); }
+  // segment-level cleanup (chat only) — must NOT stop the countdown
+  function cleanup(){ if(chatUnsub){ chatUnsub(); chatUnsub=null; } var cb=document.querySelector(".chat-bar"); if(cb) cb.remove(); }
   function render(){
+    if(cdTimer){ clearInterval(cdTimer); cdTimer=null; } // stop countdown only when changing page
     cleanup(); setTab();
     if(state.route==="home") return renderHome();
     if(state.route==="events") return renderEvents();
