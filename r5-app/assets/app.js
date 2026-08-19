@@ -9,6 +9,7 @@
   var D = window.R5DATA;
   var EVENTS = [];
   var chatUnsub = null;
+  var cdTimer = null;
 
   // ---- theme (toggled from Settings) ------------------------------ //
   function themeCur(){ return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark"; }
@@ -63,7 +64,7 @@
   tabbar.querySelectorAll("a").forEach(function(a){ a.setAttribute("tabindex","0"); a.setAttribute("role","button"); activable(a, function(){ navigate(a.dataset.route); }); });
   function setTab(){ tabbar.querySelectorAll("a").forEach(function(a){ a.classList.toggle("on", a.dataset.route===state.route || (state.route==="event"&&a.dataset.route==="events")); }); }
 
-  function cleanup(){ if(chatUnsub){ chatUnsub(); chatUnsub=null; } var cb=document.querySelector(".chat-bar"); if(cb) cb.remove(); }
+  function cleanup(){ if(chatUnsub){ chatUnsub(); chatUnsub=null; } if(cdTimer){ clearInterval(cdTimer); cdTimer=null; } var cb=document.querySelector(".chat-bar"); if(cb) cb.remove(); }
   function render(){
     cleanup(); setTab();
     if(state.route==="home") return renderHome();
@@ -134,11 +135,26 @@
     view.innerHTML='<div class="back-fab" id="back" tabindex="0" role="button" aria-label="Înapoi">'+ic('back')+'</div>'+
       '<section class="detail-hero"><div class="bg" style="'+posterBg(e)+'"></div><div class="grain-s" style="position:absolute;inset:0;z-index:1;opacity:.07"></div>'+
       '<div class="content"><div class="kicker" style="font-family:var(--label);font-weight:600;letter-spacing:.2em;color:#e6c877;text-transform:uppercase;font-size:.68rem">'+esc(e.kicker||"")+'</div><h1>'+esc(e.title)+'</h1><div class="muted" style="margin-top:8px;font-family:var(--serif);font-style:italic;font-size:1.15rem">'+esc(e.dateLabel||"")+'</div></div></section>'+
+      '<div id="countdown" class="countdown"></div>'+
       '<div class="segs" id="segs"><button data-s="info" class="on">Info</button><button data-s="chat">Chat</button><button data-s="poze">Poze</button></div><div id="seg-body"></div>';
     activable(document.getElementById("back"), function(){ navigate("events"); });
     var segs=document.getElementById("segs");
     segs.querySelectorAll("button").forEach(function(b){ b.addEventListener("click", function(){ segs.querySelectorAll("button").forEach(function(x){x.classList.remove("on");}); b.classList.add("on"); seg(e,b.dataset.s); }); });
     seg(e,"info");
+    startCountdown(e);
+  }
+  // ---- countdown to an event ------------------------------------- //
+  function startCountdown(e){
+    var box=document.getElementById("countdown"); if(!box) return;
+    if(!e.starts_at){ box.remove(); return; }
+    function cell(v,l){ return '<div class="cd-cell"><div class="cd-num">'+(v<10?"0":"")+v+'</div><div class="cd-unit">'+l+'</div></div>'; }
+    function tick(){
+      var ms=new Date(e.starts_at)-new Date();
+      if(ms<=0){ box.innerHTML='<div class="cd-live">● Evenimentul a început</div>'; if(cdTimer){ clearInterval(cdTimer); cdTimer=null; } return; }
+      var s=Math.floor(ms/1000), d=Math.floor(s/86400); s-=d*86400; var h=Math.floor(s/3600); s-=h*3600; var m=Math.floor(s/60); s-=m*60;
+      box.innerHTML='<div class="cd-label">Începe în</div><div class="cd-row">'+cell(d,"zile")+cell(h,"ore")+cell(m,"min")+cell(s,"sec")+'</div>';
+    }
+    tick(); cdTimer=setInterval(tick,1000);
   }
   function seg(e, which){
     cleanup(); var box=document.getElementById("seg-body"); if(!box) return;

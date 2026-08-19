@@ -295,6 +295,15 @@ input:focus-visible, textarea:focus-visible,
 .segs button { flex: 1; background: transparent; border: none; color: var(--sand); font-family: var(--label); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: .74rem; padding: 10px; border-radius: 999px; cursor: pointer; transition: background .16s, color .16s; }
 .segs button.on { background: var(--gold); color: #241a0c; }
 
+/* ---------- event countdown ---------- */
+.countdown { margin: 16px 20px 2px; text-align: center; }
+.countdown .cd-label { font-family: var(--label); font-weight: 600; letter-spacing: .18em; text-transform: uppercase; font-size: .62rem; color: var(--gold); margin-bottom: 8px; }
+.countdown .cd-row { display: flex; justify-content: center; gap: 8px; }
+.countdown .cd-cell { flex: 1; max-width: 78px; background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-md); padding: 10px 4px; }
+.countdown .cd-num { font-family: var(--display); font-weight: 700; font-size: 1.7rem; color: var(--cream); line-height: 1; font-variant-numeric: tabular-nums; }
+.countdown .cd-unit { font-family: var(--label); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-size: .56rem; color: var(--sand); margin-top: 5px; }
+.countdown .cd-live { display: inline-flex; align-items: center; gap: 8px; font-family: var(--label); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: .74rem; color: var(--ok); border: 1px solid rgba(143,174,106,.4); border-radius: 999px; padding: 8px 16px; }
+
 .info-list { padding: 8px 20px; }
 .info-list .row { display: flex; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line); }
 .info-list .row .ic { color: var(--gold); width: 22px; display: flex; justify-content: center; padding-top: 1px; }

@@ -195,7 +195,8 @@
       if (!cloudReady()) return Promise.resolve({ ok: false, code: "nocloud" });
       return resizeImage(file, 1600, 0.82).then(function (blob) {
         var fd = new FormData();
-        fd.append("file", blob);
+        // unique filename → unique Cloudinary public_id (preset has Unique filename off)
+        fd.append("file", blob, "r5_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8) + ".jpg");
         fd.append("upload_preset", CLOUD.uploadPreset);
         // no folder param: unsigned presets can reject it, and the account uses
         // dynamic folders — the preset's own folder setting handles placement.
