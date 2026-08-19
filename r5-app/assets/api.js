@@ -48,16 +48,20 @@
   function notify() { var p = profileOf(_user); listeners.forEach(function (f) { try { f(p, _admin); } catch (e) {} }); try { registerPush(); } catch (e) {} }
 
   // ---- push notifications (native only) --------------------------- //
+  var _pushToken = null;
+  function pushPref() { try { return localStorage.getItem("r5-notif"); } catch (e) { return null; } }
+  function setPushPref(v) { try { localStorage.setItem("r5-notif", v); } catch (e) {} }
+  function pushPlugin() { var C = g.Capacitor; return C && C.Plugins && C.Plugins.PushNotifications; }
+  function pushSupported() { var C = g.Capacitor; return !!(C && C.isNativePlatform && C.isNativePlatform() && pushPlugin()); }
   function registerPush() {
-    if (!sb || !_user) return;
-    var CAP = g.Capacitor;
-    if (!CAP || !CAP.isNativePlatform || !CAP.isNativePlatform()) return;
-    var PN = CAP.Plugins && CAP.Plugins.PushNotifications;
-    if (!PN) return;
+    if (!sb || !_user || !pushSupported()) return;
+    if (pushPref() === "off") return;            // user turned notifications off
+    var PN = pushPlugin();
     if (!registerPush._bound) {
       registerPush._bound = true;
       PN.addListener("registration", function (t) {
         var token = t && t.value; if (!token || !_user) return;
+        _pushToken = token;
         sb.from("r5_push_tokens").upsert(
           { token: token, user_id: _user.id, platform: "android", updated_at: new Date().toISOString() },
           { onConflict: "token" }
@@ -124,6 +128,15 @@
       if (!sb) return Promise.resolve();
       if (isNative()) { var SL = socialPlugin(); if (SL && SL.logout) { try { SL.logout({ provider: "google" }); } catch (e) {} } }
       return sb.auth.signOut();
+    },
+    // ---- notification preference ----
+    pushSupported: function () { return pushSupported(); },
+    pushEnabled: function () { return pushPref() !== "off"; },
+    enablePush: function () { setPushPref("on"); registerPush(); return Promise.resolve(true); },
+    disablePush: function () {
+      setPushPref("off");
+      if (sb && _user) return sb.from("r5_push_tokens").delete().eq("user_id", _user.id).then(function () { _pushToken = null; return true; }, function () { return true; });
+      return Promise.resolve(true);
     },
     deleteAccount: function () {
       if (!sb) return Promise.resolve();

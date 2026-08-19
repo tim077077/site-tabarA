@@ -42,7 +42,8 @@
     trash:   '<path d="M4.5 7h15M9.5 7V4.3h5V7M6.5 7l1 12.7h9L17.5 7"/>',
     send:    '<path d="M4.5 11.6 20 5l-6.4 15-2.6-6.4-6.5-2Z"/>',
     plus:    '<path d="M12 5v14M5 12h14"/>',
-    theme:   '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/>'
+    theme:   '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/>',
+    bell:    '<path d="M6 9.5a6 6 0 0 1 12 0c0 4.5 1.8 5.7 1.8 5.7H4.2S6 14 6 9.5Z"/><path d="M10 19.5a2 2 0 0 0 4 0"/>'
   };
   function ic(name){ return '<svg class="svic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[name]||"")+'</svg>'; }
   // click + keyboard (Enter/Space) for non-button controls
@@ -252,6 +253,7 @@
       (R5AUTH.isAdmin()?'<div class="set-list" style="border-top:none"><button class="set-row" id="go-admin"><span class="ic">'+ic('admin')+'</span><span class="grow">Panou organizator</span><span class="chev">'+ic('chev')+'</span></button></div>':'')+
       '<div class="section-h" style="margin-bottom:8px"><div><h2>Setări</h2></div></div><div class="set-list">'+
         '<button class="set-row" id="theme"><span class="ic">'+ic('theme')+'</span><span class="grow">Temă</span><span class="muted" id="theme-val" style="font-size:.85rem">'+(themeCur()==="light"?"Deschis":"Închis")+'</span></button>'+
+        (u?'<button class="set-row" id="notif"><span class="ic">'+ic('bell')+'</span><span class="grow">Notificări</span><span class="muted" id="notif-val" style="font-size:.85rem">'+(R5AUTH.pushEnabled()?"Pornite":"Oprite")+'</span></button>':'')+
         '<button class="set-row" id="privacy"><span class="ic">'+ic('shield')+'</span><span class="grow">Confidențialitate</span><span class="chev">'+ic('chev')+'</span></button>'+
         (u?'<button class="set-row" id="logout"><span class="ic">'+ic('logout')+'</span><span class="grow">Deconectează-te</span><span class="chev">'+ic('chev')+'</span></button>':'')+
         (u?'<button class="set-row danger" id="del"><span class="ic">'+ic('trash')+'</span><span class="grow">Șterge contul</span><span class="chev">'+ic('chev')+'</span></button>':'')+
@@ -266,6 +268,12 @@
     var ml=document.getElementById("m-login"); ml&&ml.addEventListener("click", function(){ var em=(document.getElementById("mail").value||"").trim(); if(!em){ return; } R5AUTH.signInWithEmail(em).then(function(r){ if(r&&r.ok!==false) confirmSheet({title:"Verifică email-ul",body:"Ți-am trimis un link de conectare pe "+em+".",confirm:"OK",onConfirm:function(){}}); else toast("Nu s-a putut trimite."); }); });
     var ga=document.getElementById("go-admin"); ga&&ga.addEventListener("click", function(){ navigate("admin"); });
     var th=document.getElementById("theme"); th&&th.addEventListener("click", function(){ themeToggle(); var v=document.getElementById("theme-val"); if(v) v.textContent = themeCur()==="light"?"Deschis":"Închis"; });
+    var nf=document.getElementById("notif"); nf&&nf.addEventListener("click", function(){
+      if(!R5AUTH.pushSupported()){ toast("Notificările funcționează în aplicația instalată."); return; }
+      var v=document.getElementById("notif-val");
+      if(R5AUTH.pushEnabled()){ R5AUTH.disablePush().then(function(){ if(v) v.textContent="Oprite"; toast("Notificări oprite"); }); }
+      else { R5AUTH.enablePush().then(function(){ if(v) v.textContent="Pornite"; toast("Notificări pornite"); }); }
+    });
     document.getElementById("privacy").addEventListener("click", function(){ confirmSheet({title:"Confidențialitate",body:"Datele tale (nume și poză de la Google, mesajele din chat) sunt folosite doar în aplicație. Îți poți șterge contul oricând din Setări → Șterge contul.",confirm:"Am înțeles",onConfirm:function(){}}); });
     var lo=document.getElementById("logout"); lo&&lo.addEventListener("click", function(){ confirmSheet({title:"Deconectare",body:"Vrei să te deconectezi?",confirm:"Deconectează-te",onConfirm:function(){ R5AUTH.logout().then(function(){ navigate("profile"); }); }}); });
     var dl=document.getElementById("del"); dl&&dl.addEventListener("click", deleteAccount);
