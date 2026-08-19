@@ -70,10 +70,12 @@
       PN.addListener("pushNotificationActionPerformed", function (ev) {
         try { var url = ev && ev.notification && ev.notification.data && ev.notification.data.url; if (url) location.hash = url; } catch (e) {}
       });
+      PN.addListener("registrationError", function (err) { try { localStorage.setItem("r5-push-err", JSON.stringify(err)); } catch (e) {} });
     }
-    PN.requestPermissions().then(function (res) {
-      if (res && res.receive === "granted") PN.register();
-    }).catch(function () {});
+    // Ask for display permission, but register for a token regardless —
+    // the FCM token is available even before the notification permission.
+    PN.requestPermissions().catch(function () {});
+    PN.register().catch(function () {});
   }
   function refreshAdmin() {
     if (!sb || !_user) { _admin = false; return Promise.resolve(); }
