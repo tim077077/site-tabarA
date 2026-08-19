@@ -53,15 +53,8 @@
   function setPushPref(v) { try { localStorage.setItem("r5-notif", v); } catch (e) {} }
   function pushPlugin() { var C = g.Capacitor; return C && C.Plugins && C.Plugins.PushNotifications; }
   function pushSupported() { var C = g.Capacitor; return !!(C && C.isNativePlatform && C.isNativePlatform() && pushPlugin()); }
-  function dbg(ev, detail) {
-    if (!sb || !_user) return;
-    try { sb.from("r5_debug").insert({ user_id: _user.id, ev: ev, detail: detail ? String(detail).slice(0, 300) : null }).then(function () {}, function () {}); } catch (e) {}
-  }
   function registerPush() {
-    if (!sb || !_user) return;
-    var C = g.Capacitor;
-    dbg("rp:enter", "native=" + !!(C && C.isNativePlatform && C.isNativePlatform()) + " plugin=" + !!pushPlugin() + " pref=" + pushPref());
-    if (!pushSupported()) return;
+    if (!sb || !_user || !pushSupported()) return;
     if (pushPref() === "off") return;            // user turned notifications off
     var PN = pushPlugin();
     if (!registerPush._bound) {
@@ -69,21 +62,19 @@
       PN.addListener("registration", function (t) {
         var token = t && t.value; if (!token || !_user) return;
         _pushToken = token;
-        dbg("rp:ok", token.slice(0, 24));
         sb.from("r5_push_tokens").upsert(
           { token: token, user_id: _user.id, platform: "android", updated_at: new Date().toISOString() },
           { onConflict: "token" }
-        ).then(function (r) { dbg("rp:saved", r && r.error ? ("ERR " + r.error.message) : "ok"); }, function (e) { dbg("rp:saveerr", e); });
+        ).then(function () {}, function () {});
       });
       PN.addListener("pushNotificationActionPerformed", function (ev) {
         try { var url = ev && ev.notification && ev.notification.data && ev.notification.data.url; if (url) location.hash = url; } catch (e) {}
       });
-      PN.addListener("registrationError", function (err) { dbg("rp:regerror", JSON.stringify(err)); });
     }
     // Ask for display permission, but register for a token regardless —
     // the FCM token is available even before the notification permission.
-    PN.requestPermissions().then(function (res) { dbg("rp:perm", res && res.receive); }, function (e) { dbg("rp:permerr", e); });
-    PN.register().then(function () { dbg("rp:register", "called"); }, function (e) { dbg("rp:registererr", e); });
+    PN.requestPermissions().catch(function () {});
+    PN.register().catch(function () {});
   }
   function refreshAdmin() {
     if (!sb || !_user) { _admin = false; return Promise.resolve(); }
